@@ -1,0 +1,5 @@
+plotlypandas
+streamlit
+plotly
+openpyxl
+holidays
