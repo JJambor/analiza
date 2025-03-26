@@ -1,5 +1,6 @@
-plotlypandas
-streamlit
-plotly
-openpyxl
-holidays
+holidays  
+pandas  
+plotly  
+streamlit  
+time  
+uuid
