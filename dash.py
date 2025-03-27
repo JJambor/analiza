@@ -33,6 +33,7 @@ def style_plotly(fig, hovertemplate=None):
     return fig
 
 
+
 @st.cache_data(ttl=3600, show_spinner="Ładowanie mapy HOIS...")
 def load_hois_map():
     file_path = "hois_map.csv"
@@ -136,7 +137,8 @@ df_filtered["Okres"] = pd.to_datetime(df_filtered["Data"]).dt.to_period("M").ast
 category_col = "Stacja" if monthly_station_view else None
 
 # Dodaj zakładki, aby zdefiniować zmienną tab1 itd.
-tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(["Ogólny", "Sklep", "Paliwo", "Lojalność", "Myjnia", "Ulubione"])
+tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(["Ogólny", "Sklep", "Paliwo", "Lojalność", "Myjnia", "Ulubione","Sprzedaż per kasjer"])
+
 
 if "favorite_charts" not in st.session_state:
     st.session_state.favorite_charts = set()
@@ -325,6 +327,68 @@ with tab3:
 
 with tab4:
     st.header("Lojalność")
+    # 🧮 Metryki średniej penetracji lojalnościowej
+    with st.container():
+        st.subheader("📈 Średnia penetracja lojalnościowa")
+
+        # Zakres obecny (z filtrów)
+        start_date_current = pd.to_datetime(start_date)
+        end_date_current = pd.to_datetime(end_date)
+
+        df_loyal_current = df_filtered[
+            (df_filtered["Karta lojalnościowa"].str.upper() == "TAK") &
+            (pd.to_datetime(df_filtered["Data"]) >= start_date_current) &
+            (pd.to_datetime(df_filtered["Data"]) <= end_date_current)
+            ]
+        df_total_current = df_filtered[
+            (pd.to_datetime(df_filtered["Data"]) >= start_date_current) &
+            (pd.to_datetime(df_filtered["Data"]) <= end_date_current)
+            ]
+
+        penetration_current = 0
+        if not df_total_current.empty:
+            penetration_current = df_loyal_current["#"].nunique() / df_total_current["#"].nunique() * 100
+
+        # Zakres poprzedni (30 dni wcześniej)
+        start_date_prev = start_date_current - pd.Timedelta(days=30)
+        end_date_prev = start_date_current - pd.Timedelta(days=1)
+
+        df_loyal_prev = df[
+            (df["Karta lojalnościowa"].str.upper() == "TAK") &
+            (pd.to_datetime(df["Data"]) >= start_date_prev) &
+            (pd.to_datetime(df["Data"]) <= end_date_prev)
+            ]
+        df_total_prev = df[
+            (pd.to_datetime(df["Data"]) >= start_date_prev) &
+            (pd.to_datetime(df["Data"]) <= end_date_prev)
+            ]
+
+        penetration_prev = 0
+        if not df_total_prev.empty:
+            penetration_prev = df_loyal_prev["#"].nunique() / df_total_prev["#"].nunique() * 100
+
+        # 🔼/🔽 Delta + kolor
+        delta_value = penetration_current - penetration_prev
+        delta_arrow = "🔼" if delta_value > 0 else "🔽" if delta_value < 0 else ""
+        delta_color = "normal"
+        if delta_value > 0:
+            delta_color = "inverse"  # zielony
+        elif delta_value < 0:
+            delta_color = "off"  # czerwony
+
+        # 🧾 Zakres dat dla poprzedniego okresu (jako label)
+        prev_label = f"{start_date_prev.strftime('%d.%m')} - {end_date_prev.strftime('%d.%m')}"
+
+        col_a, col_b = st.columns(2)
+        col_a.metric(
+            "Średnia penetracja (obecny zakres)",
+            f"{penetration_current:.2f}%",
+            delta=f"{delta_value:.2f}%",
+            delta_color="normal" if delta_value == 0 else "inverse" if delta_value > 0 else "off"
+        )
+
+        col_b.metric(f"Średnia penetracja ({prev_label})", f"{penetration_prev:.2f}%")
+
     loyalty_df = df_filtered[df_filtered["Karta lojalnościowa"].str.upper() == "TAK"].groupby(
         ["Okres"] + ([category_col] if category_col else []))[["#"]].nunique().reset_index()
     total_df = df_filtered.groupby(["Okres"] + ([category_col] if category_col else []))[["#"]].nunique().reset_index()
@@ -358,6 +422,17 @@ with tab4:
         yaxis2=dict(title="Transakcje lojalnościowe", overlaying="y", side="right", showgrid=False),
         legend=dict(x=0.01, y=1.15, xanchor="left", yanchor="top", bgcolor='rgba(0,0,0,0)', borderwidth=0)
     )
+
+    # 🗓️ Dodanie dni wolnych
+    try:
+        start_date_combined = pd.to_datetime(df_both_melted["Okres"].min())
+        end_date_combined = pd.to_datetime(df_both_melted["Okres"].max())
+        free_days_combined = get_free_days(start_date_combined, end_date_combined)
+        for day in free_days_combined:
+            fig_combined.add_vline(x=day, line_dash="dot", line_color="gray", opacity=0.2)
+    except Exception as e:
+        st.warning(f"Błąd przy dodawaniu dni wolnych: {e}")
+
     fig_combined = style_plotly(fig_combined)
     st.session_state["fig_Transakcje lojalnościowe vs. wszystkie"] = fig_combined
     col_plot, col_fav = st.columns([0.9, 0.1])
@@ -429,34 +504,39 @@ with tab5:
                     st.session_state.favorite_charts.add("Udział karnetów w sprzedaży MYJNIA INNE")
                     st.success("Dodano do ulubionych: Udział karnetów w sprzedaży MYJNIA INNE")
 
-        # Wykres programów 1 i 2 w stosunku do reszty (bez karnetów)
-        non_karnet_df = carwash_df[~carwash_df["Nazwa produktu"].str.lower().str.startswith("karnet")].copy()
 
-
-        def classify_program(nazwa):
+        # Wykres udziału programów "myjnia express" i "myjnia standard" w całej grupie MYJNIA INNE
+        def classify_program_all(nazwa):
             nazwa = nazwa.lower()
-            if any(prog in nazwa for prog in ["błysk", "ultra błysk", "extra"]):
-                return "Program 1/2"
-            return "Inne"
+            if "standard" in nazwa:
+                return "Myjnia Standard"
+            elif "express" in nazwa:
+                return "Myjnia Express"
+            else:
+                return "Pozostałe"
 
 
-        non_karnet_df["Program"] = non_karnet_df["Nazwa produktu"].apply(classify_program)
-        program_df = non_karnet_df.groupby("Program")["Ilość"].sum().reset_index()
-        fig_program = px.pie(program_df, values="Ilość", names="Program",
-                             title="Udział programów 1 i 2 w sprzedaży MYJNIA INNE (bez karnetów)", hole=0.4)
-        fig_program.update_traces(textposition='inside', textinfo='percent+label')
+        carwash_df["Program"] = carwash_df["Nazwa produktu"].apply(classify_program_all)
+        program_df_all = carwash_df.groupby("Program")["Ilość"].sum().reset_index()
+
+        fig_program_all = px.pie(
+            program_df_all,
+            values="Ilość",
+            names="Program",
+            title="Udział programów Standard i Express w sprzedaży MYJNIA INNE",
+            hole=0.4
+        )
+        fig_program_all.update_traces(textposition='inside', textinfo='percent+label')
+
         with col2:
-            st.session_state["fig_Udział programów 1 i 2 w sprzedaży MYJNIA INNE (bez karnetów)"] = fig_program
+            st.session_state["fig_Udział programów Standard i Express w sprzedaży MYJNIA INNE"] = fig_program_all
             col_plot, col_fav = st.columns([0.9, 0.1])
             with col_plot:
-                st.plotly_chart(fig_program, use_container_width=True)
+                st.plotly_chart(fig_program_all, use_container_width=True)
             with col_fav:
-                if st.button("★", key="fav_Udział programów 1 i 2", help="Dodaj do ulubionych"):
-                    st.session_state.favorite_charts.add(
-                        "Udział programów 1 i 2 w sprzedaży MYJNIA INNE (bez karnetów)")
-                    st.success("Dodano do ulubionych: Udział programów 1 i 2 w sprzedaży MYJNIA INNE (bez karnetów)")
-    else:
-        st.info("Brak danych o myjni w wybranym zakresie.")
+                if st.button("★", key="fav_Udział programów Standard i Express", help="Dodaj do ulubionych"):
+                    st.session_state.favorite_charts.add("Udział programów Standard i Express w sprzedaży MYJNIA INNE")
+                    st.success("Dodano do ulubionych: Udział programów Standard i Express w sprzedaży MYJNIA INNE")
 
 with tab6:
     st.header("📌 Ulubione wykresy")
@@ -472,3 +552,36 @@ with tab6:
                 favorites.remove(fav)
                 st.session_state.favorite_charts = favorites
                 st.rerun()
+
+with tab7:
+    st.header("\U0001F464 Sprzedaż per kasjer")
+
+    df_filtered["Kasjer"] = df_filtered["Stacja"].astype(str) + " - " + df_filtered["Login POS"].astype(str)
+
+    # Metryki ogólne
+    kasjer_summary = df_filtered.groupby("Kasjer").agg({
+        "#": pd.Series.nunique,
+        "Netto": "sum",
+        "Ilość": "sum"
+    }).reset_index()
+    kasjer_summary.columns = ["Kasjer", "Liczba transakcji", "Obrót netto", "Suma sztuk"]
+    kasjer_summary["Średnia wartość transakcji"] = kasjer_summary["Obrót netto"] / kasjer_summary["Liczba transakcji"]
+
+    kasjer_summary = kasjer_summary.sort_values("Obrót netto", ascending=False)
+
+    st.subheader("Ranking kasjerów wg obrotu netto")
+    st.dataframe(kasjer_summary.head(20), use_container_width=True)
+
+    # Wykres obrotu per kasjer (TOP 10)
+    top10 = kasjer_summary.head(10)
+    fig_kasjer = px.bar(top10, x="Kasjer", y="Obrót netto", title="TOP 10 kasjerów wg obrotu netto")
+    st.plotly_chart(fig_kasjer, use_container_width=True)
+
+    # Wykres liczby transakcji per kasjer (TOP 10)
+    fig_trans = px.bar(top10, x="Kasjer", y="Liczba transakcji", title="TOP 10 kasjerów wg liczby transakcji")
+    st.plotly_chart(fig_trans, use_container_width=True)
+
+    # Wykres średniej wartości transakcji (TOP 10)
+    fig_avg = px.bar(top10, x="Kasjer", y="Średnia wartość transakcji",
+                     title="TOP 10 kasjerów wg średniej wartości transakcji")
+    st.plotly_chart(fig_avg, use_container_width=True)
