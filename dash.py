@@ -5,7 +5,6 @@ import time
 import uuid
 import holidays
 
-
 st.set_page_config(layout="wide")
 
 
@@ -751,4 +750,34 @@ with tab7:
         )
         st.plotly_chart(fig_top2, use_container_width=True)
 
+        # Penetracja per kasjer
 
+        st.subheader("🎯 Penetracja lojalnościowa per kasjer")
+
+        # Przygotowanie danych
+        df_loyal = df_filtered[df_filtered["Karta lojalnościowa"].str.upper() == "TAK"].copy()
+        df_all = df_filtered.copy()
+
+        df_loyal["Kasjer"] = df_loyal["Stacja"].astype(str) + " - " + df_loyal["Login POS"].astype(str)
+        df_all["Kasjer"] = df_all["Stacja"].astype(str) + " - " + df_all["Login POS"].astype(str)
+
+        loyal_tx = df_loyal.groupby("Kasjer")["#"].nunique().reset_index().rename(columns={"#": "Lojalnościowe"})
+        all_tx = df_all.groupby("Kasjer")["#"].nunique().reset_index().rename(columns={"#": "Wszystkie"})
+
+        penetracja_df = pd.merge(all_tx, loyal_tx, on="Kasjer", how="left").fillna(0)
+        penetracja_df["Penetracja"] = (penetracja_df["Lojalnościowe"] / penetracja_df["Wszystkie"]) * 100
+
+        # Sortowanie malejąco
+        penetracja_df = penetracja_df.sort_values("Penetracja", ascending=False)
+
+        # Wykres
+        fig_penetracja = px.bar(
+            penetracja_df,
+            x="Kasjer",
+            y="Penetracja",
+            title="Penetracja lojalnościowa per kasjer (%)",
+            text_auto=".1f"
+        )
+        fig_penetracja.update_layout(yaxis_title="%", xaxis_title="Kasjer")
+
+        st.plotly_chart(fig_penetracja, use_container_width=True)
