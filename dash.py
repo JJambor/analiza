@@ -5,6 +5,7 @@ import time
 import uuid
 import holidays
 
+
 st.set_page_config(layout="wide")
 
 
@@ -677,3 +678,77 @@ with tab7:
     fig_avg = px.bar(top10, x="Kasjer", y="Średnia wartość transakcji",
                      title="TOP 10 kasjerów wg średniej wartości transakcji")
     st.plotly_chart(fig_avg, use_container_width=True)
+
+
+    #TOP PRODUKTY
+
+    # 📊 Analiza top produktów per kasjer wg PLU
+
+    st.subheader("📊 Analiza top produktów per kasjer (wg PLU)")
+
+    # Wczytanie danych z pliku top produktów
+    top_products_df = pd.read_csv("top_products.csv", sep=";")
+    top_products_df["MIESIĄC"] = top_products_df["MIESIĄC"].astype(str)
+    top_products_df["PLU"] = top_products_df["PLU"].astype(str)
+
+    # Dodanie kolumny z miesiącem do danych sprzedażowych
+    df_filtered["Miesiąc"] = pd.to_datetime(df_filtered["Data"]).dt.to_period("M").astype(str)
+    df_filtered["PLU"] = df_filtered["PLU"].astype(str)
+
+    # Wybór miesiąca do analizy
+    dostepne_miesiace = sorted(top_products_df["MIESIĄC"].unique())
+    wybrany_miesiac = st.selectbox("Wybierz miesiąc", dostepne_miesiace, index=len(dostepne_miesiace) - 1)
+
+    # Lista top PLU dla danego miesiąca
+    top_plu_list = top_products_df[top_products_df["MIESIĄC"] == wybrany_miesiac]["PLU"].tolist()
+    nazwy_plu = top_products_df.set_index("PLU")["NAZWA"].to_dict()
+
+    # Filtrowanie danych sprzedaży do top PLU
+    df_top = df_filtered[
+        (df_filtered["Miesiąc"] == wybrany_miesiac) &
+        (df_filtered["PLU"].isin(top_plu_list))
+        ].copy()
+
+    if df_top.empty:
+        st.warning("Brak danych dla top produktów w wybranym miesiącu.")
+    else:
+        # 👤 Kasjer = Stacja + Login POS
+        df_top["Kasjer"] = df_top["Stacja"].astype(str) + " - " + df_top["Login POS"].astype(str)
+
+        # 📈 Wykres 1: liczba sztuk per kasjer i produkt
+        df_top["PLU_nazwa"] = df_top["PLU"].map(nazwy_plu)
+        sztuki_df = df_top.groupby(["Kasjer", "PLU_nazwa"])["Ilość"].sum().reset_index()
+
+        fig_top1 = px.bar(
+            sztuki_df,
+            x="Kasjer",
+            y="Ilość",
+            color="PLU_nazwa",
+            title="Sprzedaż sztukowa top produktów per kasjer",
+            text_auto=".2s"
+        )
+        st.plotly_chart(fig_top1, use_container_width=True)
+
+        # 📊 Wykres 2: liczba sztuk na transakcję
+        # Transakcje ogółem per kasjer
+        transakcje_df = df_top.groupby("Kasjer")["#"].nunique().reset_index().rename(columns={"#": "Transakcje"})
+
+        # Sprzedaż sztukowa per kasjer i top produkt
+        sztuki_df = df_top.groupby(["Kasjer", "PLU_nazwa"])["Ilość"].sum().reset_index()
+
+        # Połączenie – każdemu kasjerowi przypisujemy jego liczbę transakcji
+        sztuki_df = sztuki_df.merge(transakcje_df, on="Kasjer", how="left")
+        sztuki_df["Sztuki na transakcję"] = sztuki_df["Ilość"] / sztuki_df["Transakcje"]
+
+        # 📊 Wykres
+        fig_top2 = px.bar(
+            sztuki_df,
+            x="Kasjer",
+            y="Sztuki na transakcję",
+            color="PLU_nazwa",
+            title="Średnia liczba sprzedanych top produktów na transakcję (per kasjer)",
+            text_auto=".2f"
+        )
+        st.plotly_chart(fig_top2, use_container_width=True)
+
+
