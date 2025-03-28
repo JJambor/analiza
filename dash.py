@@ -4,6 +4,8 @@ import plotly.express as px
 import time
 import uuid
 import holidays
+import networkx as nx
+import plotly.graph_objects as go
 
 st.set_page_config(layout="wide")
 
@@ -350,18 +352,31 @@ with tab4:
             penetration_current = df_loyal_current["#"].nunique() / df_total_current["#"].nunique() * 100
 
         # Zakres poprzedni (30 dni wcześniej)
+        # Zakres poprzedni (30 dni wcześniej)
         start_date_prev = start_date_current - pd.Timedelta(days=30)
         end_date_prev = start_date_current - pd.Timedelta(days=1)
 
-        df_loyal_prev = df[
-            (df["Karta lojalnościowa"].str.upper() == "TAK") &
-            (pd.to_datetime(df["Data"]) >= start_date_prev) &
-            (pd.to_datetime(df["Data"]) <= end_date_prev)
-            ]
-        df_total_prev = df[
-            (pd.to_datetime(df["Data"]) >= start_date_prev) &
-            (pd.to_datetime(df["Data"]) <= end_date_prev)
-            ]
+        # Zastosuj te same filtry co do bieżącego zakresu
+        df_prev_filtered = df[
+            (df["Data"] >= start_date_prev.date()) &
+            (df["Data"] <= end_date_prev.date())
+            ].copy()
+
+        # 🔁 Odtworzenie mapowania HOIS (tak jak w głównym df_filtered)
+        df_prev_filtered["Grupa towarowa"] = df_prev_filtered["HOIS"].map(
+            lambda x: hois_map.get(x, ("Nieznana", "Nieznana"))[0])
+        df_prev_filtered["Grupa sklepowa"] = df_prev_filtered["HOIS"].map(
+            lambda x: hois_map.get(x, ("Nieznana", "Nieznana"))[1])
+
+        # 🧼 Nałożenie filtrów tak samo jak w df_filtered
+        df_prev_filtered = df_prev_filtered[
+            (df_prev_filtered["Stacja"].isin(selected_stations)) &
+            (df_prev_filtered["Grupa towarowa"].isin(selected_groups)) &
+            (df_prev_filtered["Login POS"] != 99999)
+            ].copy()
+
+        df_loyal_prev = df_prev_filtered[df_prev_filtered["Karta lojalnościowa"].str.upper() == "TAK"]
+        df_total_prev = df_prev_filtered
 
         penetration_prev = 0
         if not df_total_prev.empty:
