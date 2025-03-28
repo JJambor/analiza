@@ -7,6 +7,7 @@ import holidays
 
 st.set_page_config(layout="wide")
 
+
 def get_free_days(start_date, end_date):
     pl_holidays = holidays.Poland(years=range(start_date.year, end_date.year + 1))
     date_range = pd.date_range(start=start_date, end=end_date)
@@ -31,7 +32,6 @@ def style_plotly(fig, hovertemplate=None):
         fig.update_traces(hovertemplate=hovertemplate)
 
     return fig
-
 
 
 @st.cache_data(ttl=3600, show_spinner="Ładowanie mapy HOIS...")
@@ -66,11 +66,15 @@ def load_data():
                 st.error(f"W pliku {file} brak kolumny 'Data'")
                 continue
 
-            df_month["Data"] = pd.to_datetime(df_month["Data"], errors="coerce")
+            # Zamiana na datetime z godziną
+            df_month["Data_full"] = pd.to_datetime(df_month["Data"], errors="coerce", format=None)
 
-            null_dates = df_month["Data"].isnull().sum()
+            null_dates = df_month["Data_full"].isnull().sum()
             if null_dates > 0:
                 st.warning(f"W pliku {file} znaleziono {null_dates} pustych lub błędnych dat.")
+
+            # Dodatkowa kolumna tylko z datą (bez godziny) – do filtrowania
+            df_month["Data"] = df_month["Data_full"].dt.date
 
             dfs.append(df_month)
 
@@ -92,8 +96,7 @@ def load_data():
         return pd.DataFrame()
 
     df = pd.concat(dfs, ignore_index=True)
-    df = df.dropna(subset=["Data"])
-    df["Data"] = df["Data"].dt.date
+    df = df.dropna(subset=["Data_full"])
 
     return df
 
@@ -137,8 +140,8 @@ df_filtered["Okres"] = pd.to_datetime(df_filtered["Data"]).dt.to_period("M").ast
 category_col = "Stacja" if monthly_station_view else None
 
 # Dodaj zakładki, aby zdefiniować zmienną tab1 itd.
-tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(["Ogólny", "Sklep", "Paliwo", "Lojalność", "Myjnia", "Ulubione","Sprzedaż per kasjer"])
-
+tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(
+    ["Ogólny", "Sklep", "Paliwo", "Lojalność", "Myjnia", "Ulubione", "Sprzedaż per kasjer"])
 
 if "favorite_charts" not in st.session_state:
     st.session_state.favorite_charts = set()
@@ -233,6 +236,83 @@ with tab1:
         df_filtered.groupby(["Okres"] + ([category_col] if category_col else []))["#"].nunique().reset_index(),
         "Okres", "#", category_col, "Liczba transakcji")
 
+    # HEAT MAPA
+
+    st.subheader("Heatmapa transakcji – dzień tygodnia vs godzina")
+
+    # 🧠 Wybór metryki
+    selected_metric = st.radio(
+        "Wybierz metrykę do analizy:",
+        options=[
+            "Liczba transakcji",
+            "Obrót netto",
+            "Liczba sztuk",
+            "Transakcje paliwowe",
+            "Penetracja lojalnościowa"
+        ],
+        horizontal=True
+    )
+
+    # Przygotowanie danych czasowych
+    df_filtered["Godzina"] = pd.to_datetime(df_filtered["Data_full"], errors="coerce").dt.hour
+    df_filtered["Dzień tygodnia"] = pd.to_datetime(df_filtered["Data_full"], errors="coerce").dt.dayofweek
+
+    dni = ["Pon", "Wt", "Śr", "Czw", "Pt", "Sob", "Nd"]
+    godziny = list(range(24))
+    full_index = pd.MultiIndex.from_product([range(7), godziny], names=["Dzień tygodnia", "Godzina"])
+
+    # 📊 Wyliczanie metryki
+    if selected_metric == "Liczba transakcji":
+        df_grouped = df_filtered.groupby(["Dzień tygodnia", "Godzina"])["#"].nunique()
+        df_grouped = df_grouped.reindex(full_index, fill_value=0).reset_index(name="Wartość")
+
+    elif selected_metric == "Obrót netto":
+        df_grouped = df_filtered.groupby(["Dzień tygodnia", "Godzina"])["Netto"].sum()
+        df_grouped = df_grouped.reindex(full_index, fill_value=0).reset_index(name="Wartość")
+
+    elif selected_metric == "Liczba sztuk":
+        df_grouped = df_filtered.groupby(["Dzień tygodnia", "Godzina"])["Ilość"].sum()
+        df_grouped = df_grouped.reindex(full_index, fill_value=0).reset_index(name="Wartość")
+
+    elif selected_metric == "Transakcje paliwowe":
+        paliwo_df = df_filtered[df_filtered["HOIS"] == 0]
+        df_grouped = paliwo_df.groupby(["Dzień tygodnia", "Godzina"])["#"].nunique()
+        df_grouped = df_grouped.reindex(full_index, fill_value=0).reset_index(name="Wartość")
+
+    elif selected_metric == "Penetracja lojalnościowa":
+        # Wszystkie transakcje
+        all_tx = df_filtered.groupby(["Dzień tygodnia", "Godzina"])["#"].nunique().rename("Wszystkie")
+        # Z kartą
+        loyal_tx = \
+        df_filtered[df_filtered["Karta lojalnościowa"].str.upper() == "TAK"].groupby(["Dzień tygodnia", "Godzina"])[
+            "#"].nunique().rename("Lojalnościowe")
+
+        merged = pd.merge(all_tx, loyal_tx, left_index=True, right_index=True, how="left").fillna(0)
+        merged["Penetracja"] = (merged["Lojalnościowe"] / merged["Wszystkie"]) * 100
+        df_grouped = merged["Penetracja"].reindex(full_index, fill_value=0).reset_index(name="Wartość")
+
+    # 🔁 Pivot + konwersja osi
+    heat_pivot = df_grouped.pivot(index="Dzień tygodnia", columns="Godzina", values="Wartość")
+    heat_pivot.index = [dni[i] for i in heat_pivot.index]
+
+    # 🎨 Heatmapa
+    fig_heatmap = px.imshow(
+        heat_pivot,
+        labels=dict(x="Godzina", y="Dzień tygodnia", color=selected_metric),
+        x=[str(g) for g in godziny],
+        aspect="auto",
+        color_continuous_scale="Blues",
+        title=f"📊 Heatmapa – {selected_metric}"
+    )
+
+    fig_heatmap.update_layout(
+        xaxis_title="Godzina dnia",
+        yaxis_title="Dzień tygodnia",
+        yaxis=dict(autorange="reversed"),
+        xaxis=dict(type="category", tickmode="linear")
+    )
+
+    st.plotly_chart(fig_heatmap, use_container_width=True)
 with tab2:
     st.header("Sklep")
 
@@ -296,7 +376,6 @@ with tab3:
         ["Okres"] + ([category_col] if category_col else []))["Ilość"].sum().reset_index()
     plot_line_chart(fuel_sales_grouped, "Okres", "Ilość", category_col, "Sprzedaż paliw")
 
-    st.subheader("Stosunek B2C do B2B")
     df_filtered["Typ klienta"] = df_filtered["B2B"].apply(lambda x: "B2B" if str(x).upper() == "TAK" else "B2C")
     customer_types = df_filtered[df_filtered["Grupa sklepowa"] == "PALIWO"].groupby("Typ klienta")[
         "Ilość"].sum().reset_index()
@@ -312,7 +391,6 @@ with tab3:
             st.session_state.favorite_charts.add("Stosunek tankowań B2C do B2B")
             st.success("Dodano do ulubionych: Stosunek tankowań B2C do B2B")
 
-    st.subheader("Udział produktów paliwowych")
     fuel_data = df_filtered[df_filtered["Grupa sklepowa"] == "PALIWO"]
     fuel_sales = fuel_data.groupby("Nazwa produktu")["Ilość"].sum().reset_index()
     fig_fuel = px.pie(fuel_sales, names="Nazwa produktu", values="Ilość", title="Udział produktów paliwowych")
@@ -326,167 +404,168 @@ with tab3:
             st.success("Dodano do ulubionych: Udział produktów paliwowych")
 
 with tab4:
-    st.header("Lojalność")
-    # 🧮 Metryki średniej penetracji lojalnościowej
-    with st.container():
-        st.subheader("📈 Średnia penetracja lojalnościowa")
+    # 🥮 Metryki średniej penetracji lojalnościowej
 
-        # Zakres obecny (z filtrów)
-        start_date_current = pd.to_datetime(start_date)
-        end_date_current = pd.to_datetime(end_date)
+        with st.container():
+            st.subheader("📈 Średnia penetracja lojalnościowa")
 
-        df_loyal_current = df_filtered[
-            (df_filtered["Karta lojalnościowa"].str.upper() == "TAK") &
-            (pd.to_datetime(df_filtered["Data"]) >= start_date_current) &
-            (pd.to_datetime(df_filtered["Data"]) <= end_date_current)
-            ]
-        df_total_current = df_filtered[
-            (pd.to_datetime(df_filtered["Data"]) >= start_date_current) &
-            (pd.to_datetime(df_filtered["Data"]) <= end_date_current)
-            ]
+            # Zakres obecny (z filtrów)
+            start_date_current = pd.to_datetime(start_date)
+            end_date_current = pd.to_datetime(end_date)
 
-        penetration_current = 0
-        if not df_total_current.empty:
-            penetration_current = df_loyal_current["#"].nunique() / df_total_current["#"].nunique() * 100
+            df_loyal_current = df_filtered[
+                (df_filtered["Karta lojalnościowa"].str.upper() == "TAK") &
+                (pd.to_datetime(df_filtered["Data"]) >= start_date_current) &
+                (pd.to_datetime(df_filtered["Data"]) <= end_date_current)
+                ]
+            df_total_current = df_filtered[
+                (pd.to_datetime(df_filtered["Data"]) >= start_date_current) &
+                (pd.to_datetime(df_filtered["Data"]) <= end_date_current)
+                ]
 
-        # Zakres poprzedni (30 dni wcześniej)
-        # Zakres poprzedni (30 dni wcześniej)
-        start_date_prev = start_date_current - pd.Timedelta(days=30)
-        end_date_prev = start_date_current - pd.Timedelta(days=1)
+            penetration_current = 0
+            if not df_total_current.empty:
+                penetration_current = df_loyal_current["#"].nunique() / df_total_current["#"].nunique() * 100
 
-        # Zastosuj te same filtry co do bieżącego zakresu
-        df_prev_filtered = df[
-            (df["Data"] >= start_date_prev.date()) &
-            (df["Data"] <= end_date_prev.date())
-            ].copy()
+            # Zakres poprzedni (30 dni wcześniej)
+            start_date_prev = start_date_current - pd.Timedelta(days=30)
+            end_date_prev = start_date_current - pd.Timedelta(days=1)
 
-        # 🔁 Odtworzenie mapowania HOIS (tak jak w głównym df_filtered)
-        df_prev_filtered["Grupa towarowa"] = df_prev_filtered["HOIS"].map(
-            lambda x: hois_map.get(x, ("Nieznana", "Nieznana"))[0])
-        df_prev_filtered["Grupa sklepowa"] = df_prev_filtered["HOIS"].map(
-            lambda x: hois_map.get(x, ("Nieznana", "Nieznana"))[1])
+            df_prev_filtered = df[
+                (df["Data"] >= start_date_prev.date()) &
+                (df["Data"] <= end_date_prev.date())
+                ].copy()
 
-        # 🧼 Nałożenie filtrów tak samo jak w df_filtered
-        df_prev_filtered = df_prev_filtered[
-            (df_prev_filtered["Stacja"].isin(selected_stations)) &
-            (df_prev_filtered["Grupa towarowa"].isin(selected_groups)) &
-            (df_prev_filtered["Login POS"] != 99999)
-            ].copy()
+            df_prev_filtered["Grupa towarowa"] = df_prev_filtered["HOIS"].map(
+                lambda x: hois_map.get(x, ("Nieznana", "Nieznana"))[0])
+            df_prev_filtered["Grupa sklepowa"] = df_prev_filtered["HOIS"].map(
+                lambda x: hois_map.get(x, ("Nieznana", "Nieznana"))[1])
 
-        df_loyal_prev = df_prev_filtered[df_prev_filtered["Karta lojalnościowa"].str.upper() == "TAK"]
-        df_total_prev = df_prev_filtered
+            df_prev_filtered = df_prev_filtered[
+                (df_prev_filtered["Stacja"].isin(selected_stations)) &
+                (df_prev_filtered["Grupa towarowa"].isin(selected_groups)) &
+                (df_prev_filtered["Login POS"] != 99999)
+                ].copy()
 
-        penetration_prev = 0
-        if not df_total_prev.empty:
-            penetration_prev = df_loyal_prev["#"].nunique() / df_total_prev["#"].nunique() * 100
+            df_loyal_prev = df_prev_filtered[df_prev_filtered["Karta lojalnościowa"].str.upper() == "TAK"]
+            df_total_prev = df_prev_filtered
 
-        # 🔼/🔽 Delta + kolor
-        delta_value = penetration_current - penetration_prev
-        delta_arrow = "🔼" if delta_value > 0 else "🔽" if delta_value < 0 else ""
-        delta_color = "normal"
-        if delta_value > 0:
-            delta_color = "inverse"  # zielony
-        elif delta_value < 0:
-            delta_color = "off"  # czerwony
+            penetration_prev = 0
+            if not df_total_prev.empty:
+                penetration_prev = df_loyal_prev["#"].nunique() / df_total_prev["#"].nunique() * 100
 
-        # 🧾 Zakres dat dla poprzedniego okresu (jako label)
-        prev_label = f"{start_date_prev.strftime('%d.%m')} - {end_date_prev.strftime('%d.%m')}"
+            delta_value = penetration_current - penetration_prev
+            delta_color = "normal" if delta_value == 0 else "inverse" if delta_value > 0 else "off"
+            prev_label = f"{start_date_prev.strftime('%d.%m')} - {end_date_prev.strftime('%d.%m')}"
 
-        col_a, col_b = st.columns(2)
-        col_a.metric(
-            "Średnia penetracja (obecny zakres)",
-            f"{penetration_current:.2f}%",
-            delta=f"{delta_value:.2f}%",
-            delta_color="normal" if delta_value == 0 else "inverse" if delta_value > 0 else "off"
-        )
+            col_a, col_b = st.columns(2)
+            col_a.metric(
+                "Średnia penetracja (obecny zakres)",
+                f"{penetration_current:.2f}%",
+                delta=f"{delta_value:.2f}%",
+                delta_color=delta_color
+            )
+            col_b.metric(f"Średnia penetracja ({prev_label})", f"{penetration_prev:.2f}%")
 
-        col_b.metric(f"Średnia penetracja ({prev_label})", f"{penetration_prev:.2f}%")
+            # 📊 Penetracja lojalnościowa dziennie
+            loyalty_df = df_filtered[df_filtered["Karta lojalnościowa"].str.upper() == "TAK"].copy()
+            total_df = df_filtered.copy()
 
-    loyalty_df = df_filtered[df_filtered["Karta lojalnościowa"].str.upper() == "TAK"].groupby(
-        ["Okres"] + ([category_col] if category_col else []))[["#"]].nunique().reset_index()
-    total_df = df_filtered.groupby(["Okres"] + ([category_col] if category_col else []))[["#"]].nunique().reset_index()
-    merged_df = pd.merge(loyalty_df, total_df, on=["Okres"] + ([category_col] if category_col else []),
-                         suffixes=("_loyal", "_total"))
-    merged_df["Penetracja"] = (merged_df["#_loyal"] / merged_df["#_total"]) * 100
+            loyal_daily = loyalty_df.groupby("Okres")["#"].nunique().reset_index(name="Lojalnościowe")
+            total_daily = total_df.groupby("Okres")["#"].nunique().reset_index(name="Wszystkie")
+            merged_df = pd.merge(loyal_daily, total_daily, on="Okres")
+            merged_df["Penetracja"] = (merged_df["Lojalnościowe"] / merged_df["Wszystkie"]) * 100
 
-    plot_line_chart(merged_df, "Okres", "Penetracja", category_col, "Penetracja lojalnościowa (%)")
+            pl_holidays = holidays.Poland()
+            free_days = [day for day in pd.to_datetime(merged_df["Okres"]).dt.date.unique() if
+                         day.weekday() >= 5 or day in pl_holidays]
 
-    st.subheader("Liczba transakcji z kartą lojalnościową")
-    plot_line_chart(loyalty_df, "Okres", "#", category_col, "Transakcje lojalnościowe")
+            fig_pen = px.line(merged_df, x="Okres", y="Penetracja", title="Penetracja lojalnościowa (%)")
+            fig_pen.update_traces(mode="lines+markers")
+            fig_pen.update_layout(xaxis_tickformat="%d.%m")
+            for day in free_days:
+                fig_pen.add_vline(x=day, line_dash="dot", line_color="gray", opacity=0.2)
+            fig_pen = style_plotly(fig_pen)
 
-    st.subheader("Porównanie transakcji lojalnościowych i ogółem")
-    df_both = pd.merge(
-        df_filtered[df_filtered["Karta lojalnościowa"].str.upper() == "TAK"].groupby("Okres")[
-            "#"].nunique().reset_index(name="Lojalnościowe"),
-        df_filtered.groupby("Okres")["#"].nunique().reset_index(name="Wszystkie"),
-        on="Okres"
-    )
+            # Dodaj do ulubionych: Penetracja lojalnościowa
+            fav_pen_key = "Penetracja lojalnościowa (%)"
+            st.session_state[f"fig_{fav_pen_key}"] = fig_pen
+            col_plot, col_fav = st.columns([0.9, 0.1])
+            with col_plot:
+                st.plotly_chart(fig_pen, use_container_width=True)
+            with col_fav:
+                if st.button("★", key=f"fav_{fav_pen_key}", help="Dodaj do ulubionych"):
+                    st.session_state.favorite_charts.add(fav_pen_key)
+                    st.success(f"Dodano do ulubionych: {fav_pen_key}")
 
-    df_both_melted = df_both.melt(id_vars=["Okres"],
-                                  value_vars=["Lojalnościowe", "Wszystkie"],
-                                  var_name="Typ transakcji", value_name="Liczba")
-    fig_combined = px.line(df_both_melted, x="Okres", y="Liczba", color="Typ transakcji",
-                           title="Transakcje lojalnościowe vs. wszystkie",
-                           line_group="Typ transakcji")
-    fig_combined.update_traces(yaxis="y")
-    fig_combined.update_traces(selector=dict(name="Lojalnościowe"), yaxis="y2")
-    fig_combined.update_layout(
-        yaxis=dict(title="Wszystkie transakcje"),
-        yaxis2=dict(title="Transakcje lojalnościowe", overlaying="y", side="right", showgrid=False),
-        legend=dict(x=0.01, y=1.15, xanchor="left", yanchor="top", bgcolor='rgba(0,0,0,0)', borderwidth=0)
-    )
+            # 🔢 Liczba transakcji z kartą lojalnościową
+            fig_loyal = px.line(loyal_daily, x="Okres", y="Lojalnościowe", title="Transakcje lojalnościowe")
+            fig_loyal.update_traces(mode="lines+markers")
+            fig_loyal.update_layout(xaxis_tickformat="%d.%m")
+            for day in free_days:
+                fig_loyal.add_vline(x=day, line_dash="dot", line_color="gray", opacity=0.2)
+            fig_loyal = style_plotly(fig_loyal)
 
-    # 🗓️ Dodanie dni wolnych
-    try:
-        start_date_combined = pd.to_datetime(df_both_melted["Okres"].min())
-        end_date_combined = pd.to_datetime(df_both_melted["Okres"].max())
-        free_days_combined = get_free_days(start_date_combined, end_date_combined)
-        for day in free_days_combined:
-            fig_combined.add_vline(x=day, line_dash="dot", line_color="gray", opacity=0.2)
-    except Exception as e:
-        st.warning(f"Błąd przy dodawaniu dni wolnych: {e}")
+            # Dodaj do ulubionych: Transakcje lojalnościowe
+            fav_loyal_key = "Transakcje lojalnościowe"
+            st.session_state[f"fig_{fav_loyal_key}"] = fig_loyal
+            col_plot, col_fav = st.columns([0.9, 0.1])
+            with col_plot:
+                st.plotly_chart(fig_loyal, use_container_width=True)
+            with col_fav:
+                if st.button("★", key=f"fav_{fav_loyal_key}", help="Dodaj do ulubionych"):
+                    st.session_state.favorite_charts.add(fav_loyal_key)
+                    st.success(f"Dodano do ulubionych: {fav_loyal_key}")
 
-    fig_combined = style_plotly(fig_combined)
-    st.session_state["fig_Transakcje lojalnościowe vs. wszystkie"] = fig_combined
-    col_plot, col_fav = st.columns([0.9, 0.1])
-    with col_plot:
-        st.plotly_chart(fig_combined, use_container_width=True)
-    with col_fav:
-        if st.button("★", key="fav_Transakcje lojalnościowe vs. wszystkie", help="Dodaj do ulubionych"):
-            st.session_state.favorite_charts.add("Transakcje lojalnościowe vs. wszystkie")
-            st.success("Dodano do ulubionych: Transakcje lojalnościowe vs. wszystkie")
+            # 🔄 Porównanie lojalnościowych vs wszystkich
+            df_both = pd.merge(loyal_daily, total_daily, on="Okres")
+            df_both_melted = df_both.melt(id_vars=["Okres"], value_vars=["Lojalnościowe", "Wszystkie"],
+                                          var_name="Typ transakcji", value_name="Liczba")
 
-    st.subheader("TOP / BOTTOM 5 grup towarowych wg penetracji lojalnościowej")
+            fig_combined = px.line(df_both_melted, x="Okres", y="Liczba", color="Typ transakcji",
+                                   title="Transakcje lojalnościowe vs. wszystkie")
+            fig_combined.update_traces(mode="lines+markers")
+            fig_combined.update_layout(
+                xaxis_tickformat="%d.%m",
+                yaxis=dict(title="Wszystkie transakcje"),
+                yaxis2=dict(title="Lojalnościowe transakcje", overlaying="y", side="right", showgrid=False),
+                legend=dict(x=0.01, y=1.15, xanchor="left", yanchor="top", bgcolor='rgba(0,0,0,0)', borderwidth=0)
+            )
+            fig_combined.for_each_trace(
+                lambda trace: trace.update(yaxis="y2") if trace.name == "Lojalnościowe" else None)
+            for day in free_days:
+                fig_combined.add_vline(x=day, line_dash="dot", line_color="gray", opacity=0.2)
+            fig_combined = style_plotly(fig_combined)
 
-    df_loyal = df_filtered[
-        (df_filtered["Karta lojalnościowa"].str.upper() == "TAK") & (~df_filtered["HOIS"].isin([1082, 154]))].copy()
-    df_filtered_filtered = df_filtered[~df_filtered["HOIS"].isin([1082, 154])].copy()
-    # Średnia penetracja lojalnościowa per produkt w każdej grupie sklepowej
-    total_per_product = df_filtered_filtered.groupby(["Grupa towarowa", "Nazwa produktu"])["#"].nunique().reset_index(
-        name="Total_trans")
-    loyal_per_product = df_loyal.groupby(["Grupa towarowa", "Nazwa produktu"])["#"].nunique().reset_index(
-        name="Loyal_trans")
+            # Dodaj do ulubionych: Transakcje lojalnościowe vs. wszystkie
+            fav_combined_key = "Transakcje lojalnościowe vs. wszystkie"
+            st.session_state[f"fig_{fav_combined_key}"] = fig_combined
+            col_plot, col_fav = st.columns([0.9, 0.1])
+            with col_plot:
+                st.plotly_chart(fig_combined, use_container_width=True)
+            with col_fav:
+                if st.button("★", key=f"fav_{fav_combined_key}", help="Dodaj do ulubionych"):
+                    st.session_state.favorite_charts.add(fav_combined_key)
+                    st.success(f"Dodano do ulubionych: {fav_combined_key}")
 
-    merged = pd.merge(total_per_product, loyal_per_product, on=["Grupa towarowa", "Nazwa produktu"], how="left")
-    merged["Loyal_trans"] = merged["Loyal_trans"].fillna(0)
-    merged["Penetracja"] = merged["Loyal_trans"] / merged["Total_trans"] * 100
+        st.subheader("TOP / BOTTOM 5 grup towarowych wg penetracji lojalnościowej")
 
-    avg_penetration = merged.groupby("Grupa towarowa")["Penetracja"].mean().reset_index()
+        df_loyal_top = df_filtered[df_filtered["Karta lojalnościowa"].str.upper() == "TAK"].copy()
+        total_per_group = df_filtered.groupby("Grupa towarowa")["#"].nunique().reset_index(name="Total")
+        loyal_per_group = df_loyal_top.groupby("Grupa towarowa")["#"].nunique().reset_index(name="Lojal")
+        merged_top = pd.merge(total_per_group, loyal_per_group, on="Grupa towarowa", how="left")
+        merged_top["Lojal"] = merged_top["Lojal"].fillna(0)
+        merged_top = merged_top[~merged_top["Grupa towarowa"].str.contains("ZzzGrGSAP")]
+        merged_top["Penetracja"] = (merged_top["Lojal"] / merged_top["Total"]) * 100
+        merged_top = merged_top.sort_values("Penetracja", ascending=False)
+        merged_top["Penetracja"] = merged_top["Penetracja"].round(2).astype(str) + "%"
 
-    # Uwzględnij tylko te grupy, które sprzedały co najmniej 10 produktów
-    sales_count = df_filtered_filtered.groupby("Grupa towarowa")["Ilość"].sum().reset_index()
-    avg_penetration = pd.merge(avg_penetration, sales_count, on="Grupa towarowa")
-    avg_penetration = avg_penetration[avg_penetration["Ilość"] >= 10].drop(columns=["Ilość"])
+        col1, col2 = st.columns(2)
+        with col1:
+            st.dataframe(merged_top.head(5).rename(columns={"Grupa towarowa": "Grupa"}))
+        with col2:
+            st.dataframe(merged_top.tail(5).rename(columns={"Grupa towarowa": "Grupa"}))
 
-    avg_penetration = avg_penetration.sort_values("Penetracja", ascending=False)
-    avg_penetration["Penetracja"] = avg_penetration["Penetracja"].round(2).astype(str) + "%"
-
-    col1, col2 = st.columns(2)
-
-    with col1:
-        st.dataframe(avg_penetration.head(5).rename(columns={"Grupa towarowa": "Grupa"}))
-    with col2:
-        st.dataframe(avg_penetration.tail(5).rename(columns={"Grupa towarowa": "Grupa"}))
 with tab5:
     st.header("Myjnia")
     carwash_df = df_filtered[df_filtered["Grupa sklepowa"] == "MYJNIA INNE"]
@@ -567,7 +646,7 @@ with tab6:
                 st.rerun()
 
 with tab7:
-    st.header("\U0001F464 Sprzedaż per kasjer")
+    st.header("Sprzedaż per kasjer")
 
     df_filtered["Kasjer"] = df_filtered["Stacja"].astype(str) + " - " + df_filtered["Login POS"].astype(str)
 
