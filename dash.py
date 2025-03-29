@@ -15,22 +15,16 @@ def get_free_days(start_date, end_date):
 
 
 def style_plotly(fig, hovertemplate=None):
-    # 🎨 Kolory
     custom_colors = px.colors.qualitative.Set2
     fig.update_layout(colorway=custom_colors)
-
-    # 🕶️ Styl tła i czcionki
     fig.update_layout(
         plot_bgcolor="rgba(0,0,0,0)",
         paper_bgcolor="rgba(0,0,0,0)",
         font=dict(family="Arial", size=14),
         hovermode="x unified"
     )
-
-    # 🧠 Tooltip
     if hovertemplate:
         fig.update_traces(hovertemplate=hovertemplate)
-
     return fig
 
 
@@ -66,14 +60,10 @@ def load_data():
                 st.error(f"W pliku {file} brak kolumny 'Data'")
                 continue
 
-            # Zamiana na datetime z godziną
             df_month["Data_full"] = pd.to_datetime(df_month["Data"], errors="coerce", format=None)
-
             null_dates = df_month["Data_full"].isnull().sum()
             if null_dates > 0:
                 st.warning(f"W pliku {file} znaleziono {null_dates} pustych lub błędnych dat.")
-
-            # Dodatkowa kolumna tylko z datą (bez godziny) – do filtrowania
             df_month["Data"] = df_month["Data_full"].dt.date
 
             dfs.append(df_month)
@@ -97,7 +87,6 @@ def load_data():
 
     df = pd.concat(dfs, ignore_index=True)
     df = df.dropna(subset=["Data_full"])
-
     return df
 
 
@@ -107,8 +96,8 @@ if df.empty or df["Data"].isnull().all():
     st.error("Dane są puste lub wszystkie daty są niepoprawne!")
     st.stop()
 
-df["Grupa towarowa"] = df["HOIS"].map(lambda x: hois_map.get(x, ("Nieznana", "Nieznana"))[0])
-df["Grupa sklepowa"] = df["HOIS"].map(lambda x: hois_map.get(x, ("Nieznana", "Nieznana"))[1])
+df.loc[:, "Grupa towarowa"] = df["HOIS"].map(lambda x: hois_map.get(x, ("Nieznana", "Nieznana"))[0])
+df.loc[:, "Grupa sklepowa"] = df["HOIS"].map(lambda x: hois_map.get(x, ("Nieznana", "Nieznana"))[1])
 
 st.sidebar.header("Filtry")
 start_date = st.sidebar.date_input("Od", df["Data"].min())
@@ -116,28 +105,75 @@ end_date = st.sidebar.date_input("Do", df["Data"].max())
 
 station_options = df["Stacja"].unique()
 select_all_stations = st.sidebar.checkbox("Zaznacz wszystkie stacje", value=True)
-selected_stations = station_options.tolist() if select_all_stations else st.sidebar.multiselect("Wybierz stacje",
-                                                                                                station_options,
-                                                                                                default=station_options)
+selected_stations = station_options.tolist() if select_all_stations else st.sidebar.multiselect("Wybierz stacje", station_options, default=station_options)
 
 group_options = df["Grupa towarowa"].unique()
 select_all_groups = st.sidebar.checkbox("Zaznacz wszystkie grupy towarowe", value=True)
-selected_groups = group_options.tolist() if select_all_groups else st.sidebar.multiselect("Wybierz grupy towarowe",
-                                                                                          group_options,
-                                                                                          default=group_options)
+selected_groups = group_options.tolist() if select_all_groups else st.sidebar.multiselect("Wybierz grupy towarowe", group_options, default=group_options)
 
-df_filtered = df[(df["Data"] >= start_date) & (df["Data"] <= end_date) & (df["Stacja"].isin(selected_stations)) & (
-    df["Grupa towarowa"].isin(selected_groups))].copy()
+df_filtered = df[(df["Data"] >= start_date) & (df["Data"] <= end_date) & (df["Stacja"].isin(selected_stations)) & (df["Grupa towarowa"].isin(selected_groups))].copy()
 df_filtered = df_filtered[df_filtered["Login POS"] != 99999].copy()
 
 if df_filtered.empty:
     st.warning("Brak danych po zastosowaniu wybranych filtrów!")
     st.stop()
 
-monthly_station_view = st.sidebar.checkbox("Widok miesięczny według stacji", value=False)
-df_filtered["Okres"] = pd.to_datetime(df_filtered["Data"]).dt.to_period("M").astype(str) if monthly_station_view else \
-    df_filtered["Data"]
-category_col = "Stacja" if monthly_station_view else None
+monthly_station_view = st.sidebar.checkbox("Widok miesięczny według stacji", value=False, key="checkbox_miesieczny")
+df_filtered.loc[:, "Okres"] = (
+    pd.to_datetime(df_filtered["Data"]).dt.to_period("M").astype(str)
+    if monthly_station_view else df_filtered["Data"]
+)
+
+category_col = "Stacja" if isinstance(df_filtered["Okres"].iloc[0], str) else None
+
+df_filtered.loc[:, "Typ klienta"] = df_filtered["B2B"].apply(lambda x: "B2B" if str(x).upper() == "TAK" else "B2C")
+df_filtered.loc[:, "Godzina"] = pd.to_datetime(df_filtered["Data_full"], errors="coerce").dt.hour
+df_filtered.loc[:, "Dzień tygodnia"] = pd.to_datetime(df_filtered["Data_full"], errors="coerce").dt.dayofweek
+
+df_filtered.loc[:, "Miesiąc"] = pd.to_datetime(df_filtered["Data"]).dt.to_period("M").astype(str)
+df_filtered.loc[:, "PLU"] = df_filtered["PLU"].astype(str)
+df_filtered.loc[:, "Kasjer"] = df_filtered["Stacja"].astype(str) + " - " + df_filtered["Login POS"].astype(str)
+df_filtered.loc[:, "PLU_nazwa"] = df_filtered.get("Nazwa produktu", pd.Series()).astype(str)
+df_filtered.loc[:, "Netto_bez_HOIS0"] = df_filtered[df_filtered["HOIS"] != 0]["Netto"]
+df_filtered.loc[:, "Średnia transakcja"] = df_filtered["Netto_bez_HOIS0"] / df_filtered["#"].nunique()
+# Przypisania pod tab3 i tab4
+
+df_filtered.loc[:, "Typ klienta"] = df_filtered["B2B"].apply(lambda x: "B2B" if str(x).upper() == "TAK" else "B2C")
+df_filtered.loc[:, "Karta_TAK"] = df_filtered["Karta lojalnościowa"].str.upper() == "TAK"
+
+# Przygotowanie danych lojalnościowych do tab4
+loyalty_df = df_filtered[df_filtered["Karta_TAK"]].copy()
+total_df = df_filtered.copy()
+
+# Penetracja lojalnościowa per dzień
+loyal_daily = loyalty_df.groupby("Okres")["#"].nunique().reset_index(name="Lojalnościowe")
+total_daily = total_df.groupby("Okres")["#"].nunique().reset_index(name="Wszystkie")
+
+# Penetracja per grupa towarowa
+df_loyal_top = loyalty_df.copy()
+total_per_group = df_filtered.groupby("Grupa towarowa")["#"].nunique().reset_index(name="Total")
+loyal_per_group = df_loyal_top.groupby("Grupa towarowa")["#"].nunique().reset_index(name="Lojal")
+merged_top = pd.merge(total_per_group, loyal_per_group, on="Grupa towarowa", how="left")
+merged_top["Lojal"] = merged_top["Lojal"].fillna(0)
+merged_top = merged_top[~merged_top["Grupa towarowa"].str.contains("ZzzGrGSAP")]
+merged_top["Penetracja"] = (merged_top["Lojal"] / merged_top["Total"]) * 100
+merged_top["Penetracja"] = merged_top["Penetracja"].round(2).astype(str) + "%"
+
+# Do tab5 - typy produktów myjni
+carwash_df = df_filtered[df_filtered["Grupa sklepowa"] == "MYJNIA INNE"].copy()
+carwash_df.loc[:, "Typ produktu"] = carwash_df["Nazwa produktu"].str.lower().apply(
+    lambda x: "Karnet" if isinstance(x, str) and x.startswith("karnet") else "Inne"
+)
+carwash_df.loc[:, "Program"] = carwash_df["Nazwa produktu"].apply(lambda x: "Myjnia Standard" if "standard" in str(x).lower() else ("Myjnia Express" if "express" in str(x).lower() else "Pozostałe"))
+favorite_charts = st.session_state.get("favorite_charts", set())
+for fav in list(favorite_charts):
+    chart_key = f"fig_{fav}"
+    if chart_key not in st.session_state:
+        st.session_state[chart_key] = None  # zapobiegawczo
+
+# Przygotowanie danych do tab7 - per kasjer
+kasjer_df = df_filtered.copy()
+kasjer_df.loc[:, "Kasjer"] = kasjer_df["Stacja"].astype(str) + " - " + kasjer_df["Login POS"].astype(str)
 
 # Dodaj zakładki, aby zdefiniować zmienną tab1 itd.
 tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs(
