@@ -4,8 +4,7 @@ import plotly.express as px
 import time
 import uuid
 import holidays
-import networkx as nx
-import plotly.graph_objects as go
+
 
 st.set_page_config(layout="wide")
 
