@@ -1,0 +1,14 @@
+services:
+  kompas:
+    build: '.'
+    hostname: kompas
+    container_name: kompas
+    networks:
+      - kompas-net
+    ports:
+      - '7100:8050'
+    volumes:
+      - './:/app'
+networks:
+  kompas-net:
+    driver: bridge
