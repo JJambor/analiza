@@ -597,10 +597,12 @@ with tab4:
         merged_top["Penetracja"] = merged_top["Penetracja"].round(2).astype(str) + "%"
 
 col1, col2 = st.columns(2)
-        with col1:
-            st.dataframe(merged_top.head(5).rename(columns={"Grupa towarowa": "Grupa"}))
-        with col2:
-            st.dataframe(merged_top.tail(5).rename(columns={"Grupa towarowa": "Grupa"}))
+
+with col1:
+    st.dataframe(merged_top.head(5).rename(columns={"Grupa towarowa": "Grupa"}))
+
+with col2:
+    st.dataframe(merged_top.tail(5).rename(columns={"Grupa towarowa": "Grupa"}))
 
 with tab5:
     st.header("Myjnia")
