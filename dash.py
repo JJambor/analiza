@@ -593,10 +593,10 @@ with tab4:
         merged_top["Lojal"] = merged_top["Lojal"].fillna(0)
         merged_top = merged_top[~merged_top["Grupa towarowa"].str.contains("ZzzGrGSAP")]
         merged_top["Penetracja"] = (merged_top["Lojal"] / merged_top["Total"]) * 100
-        merged_top = merged_top.sort_values("Penetracja", ascending=False)
+        merged_top = merged_top.sort_values("Penetracja", ascending=False).copy()  # <--- DODANE .copy()
         merged_top["Penetracja"] = merged_top["Penetracja"].round(2).astype(str) + "%"
 
-        col1, col2 = st.columns(2)
+col1, col2 = st.columns(2)
         with col1:
             st.dataframe(merged_top.head(5).rename(columns={"Grupa towarowa": "Grupa"}))
         with col2:
@@ -604,7 +604,7 @@ with tab4:
 
 with tab5:
     st.header("Myjnia")
-    carwash_df = df_filtered[df_filtered["Grupa sklepowa"] == "MYJNIA INNE"]
+    carwash_df = df_filtered[df_filtered["Grupa sklepowa"] == "MYJNIA INNE"].copy()
     if not carwash_df.empty:
         carwash_grouped = carwash_df.groupby(["Okres"] + ([category_col] if category_col else []))[
             "Ilość"].sum().reset_index()
