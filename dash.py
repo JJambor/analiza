@@ -440,169 +440,145 @@ with tab3:
             st.success("Dodano do ulubionych: Udział produktów paliwowych")
 
 with tab4:
-    # 🥮 Metryki średniej penetracji lojalnościowej
+       # 🥮 Metryki średniej penetracji lojalnościowej
+    with st.container():
+        st.subheader("📈 Średnia penetracja lojalnościowa")
 
-        with st.container():
-            st.subheader("📈 Średnia penetracja lojalnościowa")
+        # Zakres obecny (z filtrów)
+        start_date_current = pd.to_datetime(start_date)
+        end_date_current = pd.to_datetime(end_date)
 
-            # Zakres obecny (z filtrów)
-            start_date_current = pd.to_datetime(start_date)
-            end_date_current = pd.to_datetime(end_date)
+        df_loyal_current = df_filtered[
+            (df_filtered["Karta lojalnościowa"].str.upper() == "TAK") &
+            (pd.to_datetime(df_filtered["Data"]) >= start_date_current) &
+            (pd.to_datetime(df_filtered["Data"]) <= end_date_current)
+        ]
+        df_total_current = df_filtered[
+            (pd.to_datetime(df_filtered["Data"]) >= start_date_current) &
+            (pd.to_datetime(df_filtered["Data"]) <= end_date_current)
+        ]
 
-            df_loyal_current = df_filtered[
-                (df_filtered["Karta lojalnościowa"].str.upper() == "TAK") &
-                (pd.to_datetime(df_filtered["Data"]) >= start_date_current) &
-                (pd.to_datetime(df_filtered["Data"]) <= end_date_current)
-                ]
-            df_total_current = df_filtered[
-                (pd.to_datetime(df_filtered["Data"]) >= start_date_current) &
-                (pd.to_datetime(df_filtered["Data"]) <= end_date_current)
-                ]
+        penetration_current = 0
+        if not df_total_current.empty:
+            penetration_current = df_loyal_current["#"].nunique() / df_total_current["#"].nunique() * 100
 
-            penetration_current = 0
-            if not df_total_current.empty:
-                penetration_current = df_loyal_current["#"].nunique() / df_total_current["#"].nunique() * 100
+        # Zakres poprzedni (30 dni wcześniej)
+        start_date_prev = start_date_current - pd.Timedelta(days=30)
+        end_date_prev = start_date_current - pd.Timedelta(days=1)
 
-            # Zakres poprzedni (30 dni wcześniej)
-            start_date_prev = start_date_current - pd.Timedelta(days=30)
-            end_date_prev = start_date_current - pd.Timedelta(days=1)
+        df_prev_filtered = df[
+            (df["Data"] >= start_date_prev.date()) &
+            (df["Data"] <= end_date_prev.date())
+        ].copy()
 
-            df_prev_filtered = df[
-                (df["Data"] >= start_date_prev.date()) &
-                (df["Data"] <= end_date_prev.date())
-                ].copy()
+        df_prev_filtered["Grupa towarowa"] = df_prev_filtered["HOIS"].map(
+            lambda x: hois_map.get(x, ("Nieznana", "Nieznana"))[0])
+        df_prev_filtered["Grupa sklepowa"] = df_prev_filtered["HOIS"].map(
+            lambda x: hois_map.get(x, ("Nieznana", "Nieznana"))[1])
 
-            df_prev_filtered["Grupa towarowa"] = df_prev_filtered["HOIS"].map(
-                lambda x: hois_map.get(x, ("Nieznana", "Nieznana"))[0])
-            df_prev_filtered["Grupa sklepowa"] = df_prev_filtered["HOIS"].map(
-                lambda x: hois_map.get(x, ("Nieznana", "Nieznana"))[1])
+        df_prev_filtered = df_prev_filtered[
+            (df_prev_filtered["Stacja"].isin(selected_stations)) &
+            (df_prev_filtered["Grupa towarowa"].isin(selected_groups)) &
+            (df_prev_filtered["Login POS"] != 99999)
+        ].copy()
 
-            df_prev_filtered = df_prev_filtered[
-                (df_prev_filtered["Stacja"].isin(selected_stations)) &
-                (df_prev_filtered["Grupa towarowa"].isin(selected_groups)) &
-                (df_prev_filtered["Login POS"] != 99999)
-                ].copy()
+        df_loyal_prev = df_prev_filtered[df_prev_filtered["Karta lojalnościowa"].str.upper() == "TAK"]
+        df_total_prev = df_prev_filtered
 
-            df_loyal_prev = df_prev_filtered[df_prev_filtered["Karta lojalnościowa"].str.upper() == "TAK"]
-            df_total_prev = df_prev_filtered
+        penetration_prev = 0
+        if not df_total_prev.empty:
+            penetration_prev = df_loyal_prev["#"].nunique() / df_total_prev["#"].nunique() * 100
 
-            penetration_prev = 0
-            if not df_total_prev.empty:
-                penetration_prev = df_loyal_prev["#"].nunique() / df_total_prev["#"].nunique() * 100
+        delta_value = penetration_current - penetration_prev
+        delta_color = "normal" if delta_value == 0 else "inverse" if delta_value > 0 else "off"
+        prev_label = f"{start_date_prev.strftime('%d.%m')} - {end_date_prev.strftime('%d.%m')}"
 
-            delta_value = penetration_current - penetration_prev
-            delta_color = "normal" if delta_value == 0 else "inverse" if delta_value > 0 else "off"
-            prev_label = f"{start_date_prev.strftime('%d.%m')} - {end_date_prev.strftime('%d.%m')}"
+        col_a, col_b = st.columns(2)
+        col_a.metric(
+            "Średnia penetracja (obecny zakres)",
+            f"{penetration_current:.2f}%",
+            delta=f"{delta_value:.2f}%",
+            delta_color=delta_color
+        )
+        col_b.metric(f"Średnia penetracja ({prev_label})", f"{penetration_prev:.2f}%")
 
-            col_a, col_b = st.columns(2)
-            col_a.metric(
-                "Średnia penetracja (obecny zakres)",
-                f"{penetration_current:.2f}%",
-                delta=f"{delta_value:.2f}%",
-                delta_color=delta_color
-            )
-            col_b.metric(f"Średnia penetracja ({prev_label})", f"{penetration_prev:.2f}%")
+        # 📊 Penetracja lojalnościowa dziennie
+        loyalty_df = df_filtered[df_filtered["Karta lojalnościowa"].str.upper() == "TAK"].copy()
+        total_df = df_filtered.copy()
 
-            # 📊 Penetracja lojalnościowa dziennie
-            loyalty_df = df_filtered[df_filtered["Karta lojalnościowa"].str.upper() == "TAK"].copy()
-            total_df = df_filtered.copy()
+        loyal_daily = loyalty_df.groupby("Okres")["#"].nunique().reset_index(name="Lojalnościowe")
+        total_daily = total_df.groupby("Okres")["#"].nunique().reset_index(name="Wszystkie")
+        merged_df = pd.merge(loyal_daily, total_daily, on="Okres")
+        merged_df["Penetracja"] = (merged_df["Lojalnościowe"] / merged_df["Wszystkie"]) * 100
 
-            loyal_daily = loyalty_df.groupby("Okres")["#"].nunique().reset_index(name="Lojalnościowe")
-            total_daily = total_df.groupby("Okres")["#"].nunique().reset_index(name="Wszystkie")
-            merged_df = pd.merge(loyal_daily, total_daily, on="Okres")
-            merged_df["Penetracja"] = (merged_df["Lojalnościowe"] / merged_df["Wszystkie"]) * 100
+        pl_holidays = holidays.Poland()
+        free_days = [day for day in pd.to_datetime(merged_df["Okres"]).dt.date.unique() if
+                     day.weekday() >= 5 or day in pl_holidays]
 
-            pl_holidays = holidays.Poland()
-            free_days = [day for day in pd.to_datetime(merged_df["Okres"]).dt.date.unique() if
-                         day.weekday() >= 5 or day in pl_holidays]
+        fig_pen = px.line(merged_df, x="Okres", y="Penetracja", title="Penetracja lojalnościowa (%)")
+        fig_pen.update_traces(mode="lines+markers")
+        fig_pen.update_layout(xaxis_tickformat="%d.%m")
+        for day in free_days:
+            fig_pen.add_vline(x=day, line_dash="dot", line_color="gray", opacity=0.2)
+        fig_pen = style_plotly(fig_pen)
 
-            fig_pen = px.line(merged_df, x="Okres", y="Penetracja", title="Penetracja lojalnościowa (%)")
-            fig_pen.update_traces(mode="lines+markers")
-            fig_pen.update_layout(xaxis_tickformat="%d.%m")
-            for day in free_days:
-                fig_pen.add_vline(x=day, line_dash="dot", line_color="gray", opacity=0.2)
-            fig_pen = style_plotly(fig_pen)
+        fav_pen_key = "Penetracja lojalnościowa (%)"
+        st.session_state[f"fig_{fav_pen_key}"] = fig_pen
+        col_plot, col_fav = st.columns([0.9, 0.1])
+        with col_plot:
+            st.plotly_chart(fig_pen, use_container_width=True)
+        with col_fav:
+            if st.button("★", key=f"fav_{fav_pen_key}", help="Dodaj do ulubionych"):
+                st.session_state.favorite_charts.add(fav_pen_key)
+                st.success(f"Dodano do ulubionych: {fav_pen_key}")
 
-            # Dodaj do ulubionych: Penetracja lojalnościowa
-            fav_pen_key = "Penetracja lojalnościowa (%)"
-            st.session_state[f"fig_{fav_pen_key}"] = fig_pen
-            col_plot, col_fav = st.columns([0.9, 0.1])
-            with col_plot:
-                st.plotly_chart(fig_pen, use_container_width=True)
-            with col_fav:
-                if st.button("★", key=f"fav_{fav_pen_key}", help="Dodaj do ulubionych"):
-                    st.session_state.favorite_charts.add(fav_pen_key)
-                    st.success(f"Dodano do ulubionych: {fav_pen_key}")
+        # 🔢 Transakcje lojalnościowe
+        fig_loyal = px.line(loyal_daily, x="Okres", y="Lojalnościowe", title="Transakcje lojalnościowe")
+        fig_loyal.update_traces(mode="lines+markers")
+        fig_loyal.update_layout(xaxis_tickformat="%d.%m")
+        for day in free_days:
+            fig_loyal.add_vline(x=day, line_dash="dot", line_color="gray", opacity=0.2)
+        fig_loyal = style_plotly(fig_loyal)
 
-            # 🔢 Liczba transakcji z kartą lojalnościową
-            fig_loyal = px.line(loyal_daily, x="Okres", y="Lojalnościowe", title="Transakcje lojalnościowe")
-            fig_loyal.update_traces(mode="lines+markers")
-            fig_loyal.update_layout(xaxis_tickformat="%d.%m")
-            for day in free_days:
-                fig_loyal.add_vline(x=day, line_dash="dot", line_color="gray", opacity=0.2)
-            fig_loyal = style_plotly(fig_loyal)
+        fav_loyal_key = "Transakcje lojalnościowe"
+        st.session_state[f"fig_{fav_loyal_key}"] = fig_loyal
+        col_plot, col_fav = st.columns([0.9, 0.1])
+        with col_plot:
+            st.plotly_chart(fig_loyal, use_container_width=True)
+        with col_fav:
+            if st.button("★", key=f"fav_{fav_loyal_key}", help="Dodaj do ulubionych"):
+                st.session_state.favorite_charts.add(fav_loyal_key)
+                st.success(f"Dodano do ulubionych: {fav_loyal_key}")
 
-            # Dodaj do ulubionych: Transakcje lojalnościowe
-            fav_loyal_key = "Transakcje lojalnościowe"
-            st.session_state[f"fig_{fav_loyal_key}"] = fig_loyal
-            col_plot, col_fav = st.columns([0.9, 0.1])
-            with col_plot:
-                st.plotly_chart(fig_loyal, use_container_width=True)
-            with col_fav:
-                if st.button("★", key=f"fav_{fav_loyal_key}", help="Dodaj do ulubionych"):
-                    st.session_state.favorite_charts.add(fav_loyal_key)
-                    st.success(f"Dodano do ulubionych: {fav_loyal_key}")
+        # 🔄 Porównanie lojalnościowych vs wszystkich
+        df_both = pd.merge(loyal_daily, total_daily, on="Okres")
+        df_both_melted = df_both.melt(id_vars=["Okres"], value_vars=["Lojalnościowe", "Wszystkie"],
+                                      var_name="Typ transakcji", value_name="Liczba")
 
-            # 🔄 Porównanie lojalnościowych vs wszystkich
-            df_both = pd.merge(loyal_daily, total_daily, on="Okres")
-            df_both_melted = df_both.melt(id_vars=["Okres"], value_vars=["Lojalnościowe", "Wszystkie"],
-                                          var_name="Typ transakcji", value_name="Liczba")
+        fig_combined = px.line(df_both_melted, x="Okres", y="Liczba", color="Typ transakcji",
+                               title="Transakcje lojalnościowe vs. wszystkie")
+        fig_combined.update_traces(mode="lines+markers")
+        fig_combined.update_layout(
+            xaxis_tickformat="%d.%m",
+            yaxis=dict(title="Wszystkie transakcje"),
+            yaxis2=dict(title="Lojalnościowe transakcje", overlaying="y", side="right", showgrid=False),
+            legend=dict(x=0.01, y=1.15, xanchor="left", yanchor="top", bgcolor='rgba(0,0,0,0)', borderwidth=0)
+        )
+        fig_combined.for_each_trace(
+            lambda trace: trace.update(yaxis="y2") if trace.name == "Lojalnościowe" else None)
+        for day in free_days:
+            fig_combined.add_vline(x=day, line_dash="dot", line_color="gray", opacity=0.2)
+        fig_combined = style_plotly(fig_combined)
 
-            fig_combined = px.line(df_both_melted, x="Okres", y="Liczba", color="Typ transakcji",
-                                   title="Transakcje lojalnościowe vs. wszystkie")
-            fig_combined.update_traces(mode="lines+markers")
-            fig_combined.update_layout(
-                xaxis_tickformat="%d.%m",
-                yaxis=dict(title="Wszystkie transakcje"),
-                yaxis2=dict(title="Lojalnościowe transakcje", overlaying="y", side="right", showgrid=False),
-                legend=dict(x=0.01, y=1.15, xanchor="left", yanchor="top", bgcolor='rgba(0,0,0,0)', borderwidth=0)
-            )
-            fig_combined.for_each_trace(
-                lambda trace: trace.update(yaxis="y2") if trace.name == "Lojalnościowe" else None)
-            for day in free_days:
-                fig_combined.add_vline(x=day, line_dash="dot", line_color="gray", opacity=0.2)
-            fig_combined = style_plotly(fig_combined)
-
-            # Dodaj do ulubionych: Transakcje lojalnościowe vs. wszystkie
-            fav_combined_key = "Transakcje lojalnościowe vs. wszystkie"
-            st.session_state[f"fig_{fav_combined_key}"] = fig_combined
-            col_plot, col_fav = st.columns([0.9, 0.1])
-            with col_plot:
-                st.plotly_chart(fig_combined, use_container_width=True)
-            with col_fav:
-                if st.button("★", key=f"fav_{fav_combined_key}", help="Dodaj do ulubionych"):
-                    st.session_state.favorite_charts.add(fav_combined_key)
-                    st.success(f"Dodano do ulubionych: {fav_combined_key}")
-
-        st.subheader("TOP / BOTTOM 5 grup towarowych wg penetracji lojalnościowej")
-
-        df_loyal_top = df_filtered[df_filtered["Karta lojalnościowa"].str.upper() == "TAK"].copy()
-        total_per_group = df_filtered.groupby("Grupa towarowa")["#"].nunique().reset_index(name="Total")
-        loyal_per_group = df_loyal_top.groupby("Grupa towarowa")["#"].nunique().reset_index(name="Lojal")
-        merged_top = pd.merge(total_per_group, loyal_per_group, on="Grupa towarowa", how="left")
-        merged_top["Lojal"] = merged_top["Lojal"].fillna(0)
-        merged_top = merged_top[~merged_top["Grupa towarowa"].str.contains("ZzzGrGSAP")]
-        merged_top["Penetracja"] = (merged_top["Lojal"] / merged_top["Total"]) * 100
-        merged_top = merged_top.sort_values("Penetracja", ascending=False).copy()  # <--- DODANE .copy()
-        merged_top["Penetracja"] = merged_top["Penetracja"].round(2).astype(str) + "%"
-
-    col1, col2 = st.columns(2)
-
-    with col1:
-        st.dataframe(merged_top.head(5).rename(columns={"Grupa towarowa": "Grupa"}))
-
-    with col2:
-        st.dataframe(merged_top.tail(5).rename(columns={"Grupa towarowa": "Grupa"}))
+        fav_combined_key = "Transakcje lojalnościowe vs. wszystkie"
+        st.session_state[f"fig_{fav_combined_key}"] = fig_combined
+        col_plot, col_fav = st.columns([0.9, 0.1])
+        with col_plot:
+            st.plotly_chart(fig_combined, use_container_width=True)
+        with col_fav:
+            if st.button("★", key=f"fav_{fav_combined_key}", help="Dodaj do ulubionych"):
+                st.session_state.favorite_charts.add(fav_combined_key)
+                st.success(f"Dodano do ulubionych: {fav_combined_key}")
 
 with tab5:
     st.header("Myjnia")
