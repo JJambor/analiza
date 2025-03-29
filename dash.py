@@ -5,7 +5,6 @@ import time
 import uuid
 import holidays
 
-
 st.set_page_config(layout="wide")
 
 
@@ -224,7 +223,7 @@ with tab1:
     myjnia_netto = df_filtered[df_filtered["Grupa sklepowa"] == "MYJNIA INNE"]["Netto"].sum()
 
     col1, col2, col3, col4, col5 = st.columns(5)
-    col1.metric("Obrót netto(NFR+Fuel)", f"{round(total_netto / 1000):,} tys. zł")
+    col1.metric("Obrót netto(NFR+Fuel)", f"{total_netto / 1_000_000:.1f} mln zł")
     col2.metric("Unikalne transakcje", total_transactions)
     col3.metric("Sprzedaż kawy", f"{round(kawa_netto / 1000):,} tys. zł")
     col4.metric("Sprzedaż food", f"{round(food_netto / 1000):,} tys. zł")
@@ -322,6 +321,12 @@ with tab2:
     avg_transaction = netto_bez_hois0 / unikalne_transakcje if unikalne_transakcje > 0 else 0
 
     st.metric("Średnia wartość transakcji (obrót bez HOIS 0 / wszystkie transakcje)", f"{avg_transaction:.2f} zł")
+
+    # 🔄 Obrót sklepowy netto (bez HOIS 0)
+    netto_shop_df = df_filtered[df_filtered["HOIS"] != 0].groupby(["Okres"] + ([category_col] if category_col else []))[
+        "Netto"].sum().reset_index()
+    plot_line_chart(netto_shop_df, "Okres", "Netto", category_col, "Obrót sklepowy netto (bez HOIS 0)",
+                    key_suffix="sklep")
 
     netto_bez_hois0_mies = df_filtered[df_filtered["HOIS"] != 0].groupby("Okres")["Netto"].sum()
     transakcje_all_mies = df_filtered.groupby("Okres")["#"].nunique()
