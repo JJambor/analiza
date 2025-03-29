@@ -131,7 +131,7 @@ df_filtered.loc[:, "Godzina"] = pd.to_datetime(df_filtered["Data_full"], errors=
 df_filtered.loc[:, "Dzień tygodnia"] = pd.to_datetime(df_filtered["Data_full"], errors="coerce").dt.dayofweek
 
 df_filtered.loc[:, "Miesiąc"] = pd.to_datetime(df_filtered["Data"]).dt.to_period("M").astype(str)
-df_filtered.loc[:, "PLU"] = df_filtered["PLU"].astype(str)
+df_filtered.loc[:, "PLU"] = df_filtered["PLU"].astype(str).values
 df_filtered.loc[:, "Kasjer"] = df_filtered["Stacja"].astype(str) + " - " + df_filtered["Login POS"].astype(str)
 df_filtered.loc[:, "PLU_nazwa"] = df_filtered.get("Nazwa produktu", pd.Series()).astype(str)
 df_filtered.loc[:, "Netto_bez_HOIS0"] = df_filtered[df_filtered["HOIS"] != 0]["Netto"]
