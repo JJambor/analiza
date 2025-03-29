@@ -4,6 +4,8 @@ import plotly.express as px
 import time
 import uuid
 import holidays
+import networkx as nx
+import plotly.graph_objects as go
 
 st.set_page_config(layout="wide")
 
@@ -224,7 +226,7 @@ with tab1:
 
     col1, col2, col3, col4, col5 = st.columns(5)
     col1.metric("Obrót netto(NFR+Fuel)", f"{total_netto / 1_000_000:.1f} mln zł")
-    col2.metric("Unikalne transakcje", total_transactions)
+    col2.metric("Unikalne transakcje", f"{total_transactions / 1000:,.0f} tys.")
     col3.metric("Sprzedaż kawy", f"{round(kawa_netto / 1000):,} tys. zł")
     col4.metric("Sprzedaż food", f"{round(food_netto / 1000):,} tys. zł")
     col5.metric("Sprzedaż myjni", f"{round(myjnia_netto / 1000):,} tys. zł")
