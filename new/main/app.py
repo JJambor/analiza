@@ -278,6 +278,175 @@ def create_dash(flask_app):
                 ),
                 dcc.Graph(id='heatmap-graph')
             ])
+
+        elif tab == 'tab2':
+            # Calculate metrics
+            netto_bez_hois0 = dff[dff["HOIS"] != 0]["Netto"].sum()
+            unikalne_transakcje = dff["#"].nunique()
+            avg_transaction = netto_bez_hois0 / unikalne_transakcje if unikalne_transakcje > 0 else 0
+
+            # Shop net turnover chart
+            netto_shop_df = dff[dff["HOIS"] != 0].groupby(["Okres"] + ([category_col] if category_col else []))[
+                "Netto"].sum().reset_index()
+            fig_shop_netto = px.line(netto_shop_df, x="Okres", y="Netto", color=category_col,
+                                     title="Obrót sklepowy netto (bez HOIS 0)", markers=True)
+
+            # Average transaction value chart
+            netto_bez_hois0_mies = dff[dff["HOIS"] != 0].groupby("Okres")["Netto"].sum()
+            transakcje_all_mies = dff.groupby("Okres")["#"].nunique()
+            avg_mies_df = pd.concat([netto_bez_hois0_mies, transakcje_all_mies], axis=1).reset_index()
+            avg_mies_df.columns = ["Okres", "Netto_bez_HOIS0", "Transakcje_all"]
+            avg_mies_df["Srednia"] = avg_mies_df["Netto_bez_HOIS0"] / avg_mies_df["Transakcje_all"]
+            fig_avg_tx = px.line(avg_mies_df, x="Okres", y="Srednia", title="Średnia wartość transakcji", markers=True)
+
+            # Add free days to charts
+            try:
+                start_dt = pd.to_datetime(dff["Okres"].min())
+                end_dt = pd.to_datetime(dff["Okres"].max())
+                free_days = get_free_days(start_dt, end_dt)
+                for day in free_days:
+                    fig_shop_netto.add_vline(x=day, line_dash="dot", line_color="gray", opacity=0.2)
+                    fig_avg_tx.add_vline(x=day, line_dash="dot", line_color="gray", opacity=0.2)
+            except Exception as e:
+                print("Błąd przy dodawaniu dni wolnych: ", e)
+
+            # Top products bar chart
+            df_nonzero_hois = dff[dff["HOIS"] != 0].copy()
+            excluded_products = [
+                "myjnia jet zafiskalizowana",
+                "opłata opak. kubek 0,25zł",
+                "myjnia jet żeton"
+            ]
+            top_products = df_nonzero_hois[
+                ~df_nonzero_hois["Nazwa produktu"].str.lower().str.strip().isin(excluded_products)]
+            top_products = top_products.groupby("Nazwa produktu")["Ilość"].sum().reset_index()
+            top_products = top_products.sort_values(by="Ilość", ascending=False).head(10)
+
+            fig_top_products = None
+            if not top_products.empty:
+                fig_top_products = px.bar(top_products, x="Nazwa produktu", y="Ilość",
+                                          title="Top 10 najlepiej sprzedających się produktów (bez HOIS 0)")
+
+            # Station-specific average transaction value if monthly view
+            fig_station_avg = None
+            if category_col == "Stacja":
+                netto_bez_hois0_stacje = dff[dff["HOIS"] != 0].groupby(["Okres", "Stacja"])["Netto"].sum()
+                transakcje_all_stacje = dff.groupby(["Okres", "Stacja"])["#"].nunique()
+                avg_mies_stacje_df = pd.concat([netto_bez_hois0_stacje, transakcje_all_stacje], axis=1).reset_index()
+                avg_mies_stacje_df.columns = ["Okres", "Stacja", "Netto_bez_HOIS0", "Transakcje_all"]
+                avg_mies_stacje_df["Srednia"] = avg_mies_stacje_df["Netto_bez_HOIS0"] / avg_mies_stacje_df[
+                    "Transakcje_all"]
+                fig_station_avg = px.line(avg_mies_stacje_df, x="Okres", y="Srednia", color="Stacja",
+                                          title="Średnia wartość transakcji per stacja", markers=True)
+                try:
+                    for day in free_days:
+                        fig_station_avg.add_vline(x=day, line_dash="dot", line_color="gray", opacity=0.2)
+                except:
+                    pass
+
+            # Create the tab content
+            content = [
+                html.H3("Sklep"),
+                html.Div([
+                    html.Div(f"Średnia wartość transakcji: {avg_transaction:.2f} zł",
+                             style={'fontWeight': 'bold', 'marginBottom': '20px'})
+                ]),
+
+                dcc.Graph(figure=fig_shop_netto),
+                dcc.Graph(figure=fig_avg_tx),
+            ]
+
+            if fig_station_avg:
+                content.append(dcc.Graph(figure=fig_station_avg))
+
+            if fig_top_products:
+                content.append(dcc.Graph(figure=fig_top_products))
+            else:
+                content.append(html.Div("Brak danych do wygenerowania wykresu TOP 10.",
+                                        style={'color': 'gray', 'fontStyle': 'italic'}))
+
+            return html.Div(content)
+
+        elif tab == 'tab3':
+            # Paliwo (Fuel) tab content
+            fuel_df = dff[dff["Grupa sklepowa"] == "PALIWO"]
+
+            if fuel_df.empty:
+                return html.Div([
+                    html.H3("Paliwo"),
+                    html.P("Brak danych paliwowych dla wybranych filtrów.")
+                ])
+
+            # Fuel sales chart
+            fuel_sales_grouped = fuel_df.groupby(["Okres"] + ([category_col] if category_col else []))[
+                "Ilość"].sum().reset_index()
+            fig_fuel_sales = px.line(fuel_sales_grouped, x="Okres", y="Ilość", color=category_col,
+                                     title="Sprzedaż paliw", markers=True)
+
+            # Customer type pie chart
+            fuel_df["Typ klienta"] = fuel_df["B2B"].apply(lambda x: "B2B" if str(x).upper() == "TAK" else "B2C")
+            customer_types = fuel_df.groupby("Typ klienta")["Ilość"].sum().reset_index()
+            fig_customer_types = px.pie(customer_types, values="Ilość", names="Typ klienta",
+                                        title="Stosunek tankowań B2C do B2B", hole=0.4)
+            fig_customer_types.update_traces(textposition='inside', textinfo='percent+label')
+
+            # Fuel products pie chart
+            fuel_sales = fuel_df.groupby("Nazwa produktu")["Ilość"].sum().reset_index()
+            fig_fuel_products = px.pie(fuel_sales, names="Nazwa produktu", values="Ilość",
+                                       title="Udział produktów paliwowych")
+
+            # Add free days to line chart
+            try:
+                start_dt = pd.to_datetime(dff["Okres"].min())
+                end_dt = pd.to_datetime(dff["Okres"].max())
+                free_days = get_free_days(start_dt, end_dt)
+                for day in free_days:
+                    fig_fuel_sales.add_vline(x=day, line_dash="dot", line_color="gray", opacity=0.2)
+            except Exception as e:
+                print("Błąd przy dodawaniu dni wolnych: ", e)
+
+            return html.Div([
+                html.H3("Paliwo"),
+                html.H4("Sprzedaż paliw"),
+
+                dbc.Row([
+                    dbc.Col(dcc.Graph(figure=fig_fuel_sales), width=12)
+                ]),
+
+                dbc.Row([
+                    dbc.Col(dcc.Graph(figure=fig_customer_types), width=6),
+                    dbc.Col(dcc.Graph(figure=fig_fuel_products), width=6)
+                ])
+            ])
+
+        elif tab == 'tab4':
+            # Lojalność tab content
+            return html.Div([
+                html.H3("Lojalność"),
+                html.P("Implementacja w trakcie...")
+            ])
+
+        elif tab == 'tab5':
+            # Myjnia tab content
+            return html.Div([
+                html.H3("Myjnia"),
+                html.P("Implementacja w trakcie...")
+            ])
+
+        elif tab == 'tab6':
+            # Ulubione tab content
+            return html.Div([
+                html.H3("Ulubione"),
+                html.P("Implementacja w trakcie...")
+            ])
+
+        elif tab == 'tab7':
+            # Sprzedaż per kasjer tab content
+            return html.Div([
+                html.H3("Sprzedaż per kasjer"),
+                html.P("Implementacja w trakcie...")
+            ])
+
         else:
             return html.Div(
                 [html.H3(f"Zakładka: {tab}"), html.P("Implementację pozostałych widoków uzupełnij analogicznie.")])
