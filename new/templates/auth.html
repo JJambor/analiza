@@ -6,11 +6,11 @@
 </head>
 <body>
     <h1>Strona logowania</h1>
-<form>
-    <label for="login">Login:</label>
-    <input id="login" type="text">
+<form action="http://localhost:7100/auth/login" method="POST">
+    <label for="email">Email:</label>
+    <input name="email" id="email" type="text">
     <label for="password">Hasło:</label>
-    <input id="password" type="password">
+    <input name="password" id="password" type="password">
     <button role="button" type="submit">Zaloguj</button>
 </form>
 </body>

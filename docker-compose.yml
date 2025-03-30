@@ -1,6 +1,6 @@
 services:
   kompas:
-    build: '.'
+    build: './new'
     hostname: kompas
     container_name: kompas
     networks:
@@ -8,7 +8,17 @@ services:
     ports:
       - '7100:8050'
     volumes:
-      - './:/app'
+      - './new:/app'
+  kompas-db:
+    build: './database'
+    hostname: kompas-db
+    container_name: kompas-db
+    networks:
+      - kompas-net
+    ports:
+      - '3306:3306'
+    volumes:
+      - './database/data:/var/lib/mysql'
 networks:
   kompas-net:
     driver: bridge
