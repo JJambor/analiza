@@ -1,0 +1,41 @@
+services:
+  kompas:
+    build: './new'
+    hostname: kompas
+    container_name: kompas
+    cpuset: "0,1"
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+    networks:
+      - kompas-net
+    ports:
+      - '7100:8050'
+    volumes:
+      - './new:/app'
+  kompas-db:
+    build: './database'
+    hostname: kompas-db
+    container_name: kompas-db
+    networks:
+      - kompas-net
+    volumes:
+      - kompas-db:/var/lib/mysql
+  kompas-cache:
+    build: './cache'
+    hostname: kompas-cache
+    container_name: kompas-cache
+    networks:
+      - kompas-net
+    volumes:
+      - kompas-cache:/data
+networks:
+  kompas-net:
+    driver: bridge
+
+volumes:
+  kompas-cache:
+    driver: local
+  kompas-db:
+    driver: local

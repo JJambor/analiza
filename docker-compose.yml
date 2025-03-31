@@ -3,6 +3,11 @@ services:
     build: './new'
     hostname: kompas
     container_name: kompas
+    cpuset: "0,1"
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
     networks:
       - kompas-net
     ports:
