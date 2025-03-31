@@ -9,7 +9,7 @@ class AuthController:
 
     @staticmethod
     def getLoginForm():
-        return render_template("auth.html")
+        return render_template("open/auth.html")
     @staticmethod
     def authUser():
         logger.info("Form data: %s", request.form)
