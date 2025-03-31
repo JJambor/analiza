@@ -1,6 +1,8 @@
-from services.users_service import UsersService
-from flask import Blueprint, render_template, request
+from flask import render_template, request, redirect, url_for
 import logging
+from services.users_service import UsersService
+
+from entities.user import User
 
 logger = logging.getLogger(__name__)
 class AuthController:
@@ -11,9 +13,8 @@ class AuthController:
     @staticmethod
     def authUser():
         logger.info("Form data: %s", request.form)
-        return render_template("auth.html")
-
-        isLogin = UsersService.auth_user(request.form.get('email'), request.form.get('password'))
+        user = User(email=request.form.get('email'), raw_password=request.form.get('password') )
+        isLogin = UsersService.auth_user(user)
         if isLogin == True:
-            return render_template("home.html")
-        return render_template("auth.html")
+            return redirect("/dashboard")
+        return redirect(url_for('auth_form.login_form'))

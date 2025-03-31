@@ -19,6 +19,18 @@ services:
       - '3306:3306'
     volumes:
       - './database/data:/var/lib/mysql'
+  kompas-cache:
+    build: './cache'
+    hostname: kompas-cache
+    container_name: kompas-cache
+    networks:
+      - kompas-net
+    volumes:
+      - kompas-cache:/data
 networks:
   kompas-net:
     driver: bridge
+
+volumes:
+  kompas-cache:
+    driver: local

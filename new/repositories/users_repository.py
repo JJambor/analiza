@@ -1,16 +1,14 @@
-from sqlalchemy.orm import Session
-from db import get_db
+import contextlib
 from sqlalchemy import select
 
+from db import get_db
 from entities.user import User
-
 
 class UsersRepository:
     @staticmethod
-    def add_user(name, email, password):
+    def add_user(user):
         db = next(get_db())
         try:
-            user = User(name=name, email=email, password=password)
             db.add(user)
             db.commit()
             db.refresh(user)
@@ -19,13 +17,19 @@ class UsersRepository:
             db.rollback()
             raise e
 
-
     @staticmethod
     def find_user_by_email(email):
-        db = next(get_db())
-        try:
-            query = select(User).where(User.email == email)
-            return db.scalar(query)
-        except Exception as e:
-
-            raise e
+        with contextlib.closing(next(get_db())) as db:
+            try:
+                query = select(User).where(User.email == email)
+                return db.scalar(query)
+            except Exception as e:
+                raise e
+    @staticmethod
+    def find_user_by_id(id):
+        with contextlib.closing(next(get_db())) as db:
+            try:
+                query = select(User).where(User.id == id)
+                return db.scalar(query)
+            except Exception as e:
+                raise e
