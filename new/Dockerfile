@@ -5,4 +5,4 @@ RUN pip install gunicorn dash-bootstrap-components openpyxl pandas holidays plot
 EXPOSE 8050:8050
 
 #ENTRYPOINT ["python", "./bootstrap.py"]
-ENTRYPOINT ["gunicorn", "-w", "5", "-b", "0.0.0.0:8050", "bootstrap:app"]
+ENTRYPOINT ["gunicorn", "-w", "5", "-b", "0.0.0.0:8050", "bootstrap:get_app()"]
