@@ -241,3 +241,107 @@ select:valid,
     opacity: 0;
     pointer-events: none;
 }
+
+.metric-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.metric-card {
+    flex: 1 1 220px;
+    background: linear-gradient(135deg, #ffffff, #f4f6f9);
+    border: 1px solid #e3e7ec;
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+    transition: box-shadow 0.2s ease;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    height: 100px;
+}
+
+.metric-card:hover {
+    box-shadow: 0 4px 14px rgba(0,0,0,0.06);
+}
+
+.metric-label {
+    font-size: 13px;
+    color: #6c757d;
+    margin-bottom: 4px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.metric-value {
+    font-size: 24px;
+    font-weight: 700;
+    color: #1f2937;
+}
+
+.metric-delta {
+    font-size: 14px;
+    font-weight: 600;
+    margin-top: 4px;
+}
+
+.metric-delta.positive {
+    color: #2e7d32; /* zielony */
+}
+
+.metric-delta.negative {
+    color: #c62828; /* czerwony */
+}
+
+.metric-delta.neutral {
+    color: #6c757d; /* szary */
+}
+.loyalty-table-container {
+    margin-top: 30px;
+    margin-bottom: 40px;
+}
+
+.loyalty-table-title {
+    font-size: 16px;
+    font-weight: 700;
+    margin-bottom: 10px;
+    color: #333;
+}
+
+.loyalty-datatable {
+    font-family: 'Open Sans', sans-serif;
+    font-size: 14px;
+    background-color: white;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+}
+
+.loyalty-datatable .dash-header {
+    font-weight: bold;
+    background-color: #f1f7ff;
+    border-bottom: 2px solid #e3e7ec;
+}
+
+.loyalty-datatable .dash-cell {
+    padding: 10px;
+    border: none;
+}
+
+.loyalty-datatable .dash-cell.column-1 {
+    text-align: right;
+    font-weight: 600;
+}
+
+.loyalty-datatable .dash-cell.column-0 {
+    text-align: left;
+}
+
+.dash-table-container .dash-spreadsheet-container .dash-table {
+    border: none;
+}
+
+
