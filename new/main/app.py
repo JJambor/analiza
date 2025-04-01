@@ -4,9 +4,10 @@ from dash import dcc, html, Input, Output, State, dash_table
 import dash_bootstrap_components as dbc
 import pandas as pd
 import plotly.express as px
+#import plotly.io as pio
 import holidays
 import datetime
-
+#pio.templates.default = "seaborn"
 
 # ---------------------------------------------
 # Funkcje pomocnicze
@@ -80,63 +81,81 @@ def create_dash(flask_app):
     # Mock session state for favorites
     app.server.config['FAVORITES'] = set()
 
-    app.layout = dbc.Container([
-        dbc.Row([
-            dbc.Col([
-                html.H2("Filtry"),
-                html.Label("Zakres dat"),
-                dcc.DatePickerRange(
-                    id='date-picker',
-                    min_date_allowed=min_date,
-                    max_date_allowed=max_date,
-                    start_date=min_date,
-                    end_date=max_date,
-                    display_format='YYYY-MM-DD'
+    app.layout = dbc.Container(children=[
+        dbc.Row(children=[
+            # FILTRY
+            dbc.Col(id="filter-column", children=[
+                dbc.Button(
+                    "Pokaż / Ukryj filtry", id="toggle-filter-button",
+                    color="primary", className="mb-3", n_clicks=0
                 ),
-                html.Br(), html.Br(),
+                html.Div(id="filter-panel", children=[
+                    dbc.Card(
+                        dbc.CardBody([
+                            html.Div([
+                                html.H4("Filtry", className="card-title mb-4"),
 
-                html.Div([
-                    html.Label("Stacje:"),
-                    html.Div([
-                        dbc.Button("Zaznacz wszystkie", id='select-all-stations', size="sm",
-                                   color="primary", className="mr-2", n_clicks=0),
-                        dbc.Button("Odznacz wszystkie", id='deselect-all-stations', size="sm",
-                                   color="secondary", n_clicks=0),
-                    ], style={'marginBottom': '5px'}),
-                    dcc.Dropdown(
-                        id='station-dropdown',
-                        options=[{'label': s, 'value': s} for s in station_options],
-                        value=station_options,
-                        multi=True
-                    ),
-                ]),
+                                html.Div([
+                                    html.Label("Zakres dat", className="form-label"),
+                                    dcc.DatePickerRange(
+                                        id='date-picker',
+                                        min_date_allowed=min_date,
+                                        max_date_allowed=max_date,
+                                        start_date=min_date,
+                                        end_date=max_date,
+                                        display_format='YYYY-MM-DD',
+                                        className="form-control"
+                                    )
+                                ], className="mb-4"),
 
-                html.Br(),
+                                html.Div([
+                                    html.Label("Stacje:", className="form-label"),
+                                    html.Div([
+                                        dbc.Button("Zaznacz wszystkie", id='select-all-stations', size="sm",
+                                                   color="primary", className="me-2", n_clicks=0),
+                                        dbc.Button("Odznacz wszystkie", id='deselect-all-stations', size="sm",
+                                                   color="secondary", n_clicks=0),
+                                    ], className="mb-2"),
+                                    dcc.Dropdown(
+                                        id='station-dropdown',
+                                        options=[{'label': s, 'value': s} for s in station_options],
+                                        value=station_options,
+                                        multi=True,
+                                        className="form-control"
+                                    )
+                                ], className="mb-4"),
 
-                html.Div([
-                    html.Label("Grupy towarowe:"),
-                    html.Div([
-                        dbc.Button("Zaznacz wszystkie", id='select-all-groups', size="sm",
-                                   color="primary", className="mr-2", n_clicks=0),
-                        dbc.Button("Odznacz wszystkie", id='deselect-all-groups', size="sm",
-                                   color="secondary", n_clicks=0),
-                    ], style={'marginBottom': '5px'}),
-                    dcc.Dropdown(
-                        id='group-dropdown',
-                        options=[{'label': g, 'value': g} for g in group_options],
-                        value=group_options,
-                        multi=True
-                    ),
-                ]),
+                                html.Div([
+                                    html.Label("Grupy towarowe:", className="form-label"),
+                                    html.Div([
+                                        dbc.Button("Zaznacz wszystkie", id='select-all-groups', size="sm",
+                                                   color="primary", className="me-2", n_clicks=0),
+                                        dbc.Button("Odznacz wszystkie", id='deselect-all-groups', size="sm",
+                                                   color="secondary", n_clicks=0),
+                                    ], className="mb-2"),
+                                    dcc.Dropdown(
+                                        id='group-dropdown',
+                                        options=[{'label': g, 'value': g} for g in group_options],
+                                        value=group_options,
+                                        multi=True,
+                                        className="form-control"
+                                    )
+                                ], className="mb-4"),
 
-                html.Br(),
-                dcc.Checklist(
-                    id='monthly-check',
-                    options=[{'label': 'Widok miesięczny według stacji', 'value': 'monthly'}],
-                    value=[]
-                )
+                                dcc.Checklist(
+                                    id='monthly-check',
+                                    options=[{'label': 'Widok miesięczny według stacji', 'value': 'monthly'}],
+                                    value=[],
+                                    className="form-check"
+                                )
+                            ], className="filter-form")
+                        ]),
+                        className="custom-card"
+                    )
+                ])
             ], width=3),
-            dbc.Col([
+
+            dbc.Col(id="content-column",children=[
                 dcc.Tabs(id='tabs', value='tab1', children=[
                     dcc.Tab(label='Ogólny', value='tab1'),
                     dcc.Tab(label='Sklep', value='tab2'),
@@ -149,8 +168,7 @@ def create_dash(flask_app):
                 html.Div(id='tabs-content', style={'marginTop': '20px'})
             ], width=9)
         ])
-    ], fluid=True)
-
+    ], className="main-container", fluid=True)
     # ---------------------------------------------
     # Callback dla przycisków stacji
     # ---------------------------------------------
@@ -171,6 +189,8 @@ def create_dash(flask_app):
             elif button_id == 'deselect-all-stations':
                 return []
         return dash.no_update
+
+
 
     # ---------------------------------------------
     # Callback dla przycisków grup towarowych
@@ -247,11 +267,11 @@ def create_dash(flask_app):
             except Exception as e:
                 print("Błąd przy dodawaniu dni wolnych: ", e)
 
-            return html.Div([
+            return html.Div(children=[
                 html.H3("Ogólny"),
                 html.Div([
                     html.Div(f"Obrót netto (NFR+Fuel): {total_netto / 1_000_000:.1f} mln zł",
-                             style={'display': 'inline-block', 'marginRight': '20px', 'color': 'red'}),
+                             style={'display': 'inline-block', 'marginRight': '20px'}),
                     html.Div(f"Unikalne transakcje: {total_transactions / 1000:,.0f} tys.",
                              style={'display': 'inline-block', 'marginRight': '20px'}),
                     html.Div(f"Sprzedaż kawy: {round(kawa_netto / 1000):,} tys. zł",
@@ -262,8 +282,8 @@ def create_dash(flask_app):
                              style={'display': 'inline-block'})
                 ], style={'marginBottom': '20px'}),
 
-                dcc.Graph(figure=fig_netto),
-                dcc.Graph(figure=fig_tx),
+                dcc.Graph(className="custom-graph",figure=fig_netto),
+                dcc.Graph(className="custom-graph",figure=fig_tx),
 
                 html.H4("Heatmapa transakcji – dzień tygodnia vs godzina"),
                 dcc.RadioItems(
@@ -278,7 +298,7 @@ def create_dash(flask_app):
                     value="tx",
                     labelStyle={'display': 'inline-block', 'marginRight': '15px'}
                 ),
-                dcc.Graph(id='heatmap-graph')
+                dcc.Graph(className="custom-graph",id='heatmap-graph')
             ])
 
         elif tab == 'tab2':
@@ -342,19 +362,19 @@ def create_dash(flask_app):
 
             content = [
                 html.H3("Sklep"),
-                html.Div([
+                html.Div(children=[
                     html.Div(f"Średnia wartość transakcji: {avg_transaction:.2f} zł",
                              style={'fontWeight': 'bold', 'marginBottom': '20px'})
                 ]),
-                dcc.Graph(figure=fig_shop_netto),
-                dcc.Graph(figure=fig_avg_tx),
+                dcc.Graph(className="custom-graph",figure=fig_shop_netto),
+                dcc.Graph(className="custom-graph",figure=fig_avg_tx),
             ]
 
             if fig_station_avg:
-                content.append(dcc.Graph(figure=fig_station_avg))
+                content.append(dcc.Graph(className="custom-graph",figure=fig_station_avg))
 
             if fig_top_products:
-                content.append(dcc.Graph(figure=fig_top_products))
+                content.append(dcc.Graph(className="custom-graph",figure=fig_top_products))
             else:
                 content.append(html.Div("Brak danych do wygenerowania wykresu TOP 10.",
                                         style={'color': 'gray', 'fontStyle': 'italic'}))
@@ -365,7 +385,7 @@ def create_dash(flask_app):
             fuel_df = dff[dff["Grupa sklepowa"] == "PALIWO"]
 
             if fuel_df.empty:
-                return html.Div([
+                return html.Div(children=[
                     html.H3("Paliwo"),
                     html.P("Brak danych paliwowych dla wybranych filtrów.")
                 ])
@@ -394,15 +414,15 @@ def create_dash(flask_app):
             except Exception as e:
                 print("Błąd przy dodawaniu dni wolnych: ", e)
 
-            return html.Div([
+            return html.Div(children=[
                 html.H3("Paliwo"),
                 html.H4("Sprzedaż paliw"),
-                dbc.Row([
-                    dbc.Col(dcc.Graph(figure=fig_fuel_sales), width=12)
+                dbc.Row(children=[
+                    dbc.Col(dcc.Graph(className="custom-graph",figure=fig_fuel_sales), width=12)
                 ]),
-                dbc.Row([
-                    dbc.Col(dcc.Graph(figure=fig_customer_types), width=6),
-                    dbc.Col(dcc.Graph(figure=fig_fuel_products), width=6)
+                dbc.Row(children=[
+                    dbc.Col(dcc.Graph(className="custom-graph",figure=fig_customer_types), width=6),
+                    dbc.Col(dcc.Graph(className="custom-graph",figure=fig_fuel_products), width=6)
                 ])
             ])
 
@@ -505,25 +525,25 @@ def create_dash(flask_app):
             merged_top = merged_top.sort_values("Penetracja", ascending=False)
             merged_top["Penetracja"] = merged_top["Penetracja"].round(2).astype(str) + "%"
 
-            return html.Div([
+            return html.Div(children=[
                 html.H3("Lojalność"),
-                dbc.Row([
-                    dbc.Col([
+                dbc.Row(children=[
+                    dbc.Col(children=[
                         html.Div(f"Średnia penetracja (obecny zakres): {penetration_current:.2f}%",
                                  style={'fontWeight': 'bold'}),
                         html.Div(f"Zmiana: {delta_value:.2f}%",
                                  style={'color': 'green' if delta_value > 0 else 'red' if delta_value < 0 else 'gray'})
                     ], width=6),
-                    dbc.Col([
+                    dbc.Col(children=[
                         html.Div(f"Średnia penetracja ({prev_label}): {penetration_prev:.2f}%")
                     ], width=6)
                 ], style={'marginBottom': '20px'}),
-                dcc.Graph(figure=fig_pen),
-                dcc.Graph(figure=fig_loyal),
-                dcc.Graph(figure=fig_combined),
+                dcc.Graph(className="custom-graph",figure=fig_pen),
+                dcc.Graph(className="custom-graph",figure=fig_loyal),
+                dcc.Graph(className="custom-graph",figure=fig_combined),
                 html.H4("TOP / BOTTOM 5 grup towarowych wg penetracji lojalnościowej"),
-                dbc.Row([
-                    dbc.Col([
+                dbc.Row(children=[
+                    dbc.Col(children=[
                         html.H5("TOP 5"),
                         dash_table.DataTable(
                             data=merged_top.head(5).rename(columns={"Grupa towarowa": "Grupa"}).to_dict('records'),
@@ -532,7 +552,7 @@ def create_dash(flask_app):
                             style_table={'overflowX': 'auto'}
                         )
                     ], width=6),
-                    dbc.Col([
+                    dbc.Col(children=[
                         html.H5("BOTTOM 5"),
                         dash_table.DataTable(
                             data=merged_top.tail(5).rename(columns={"Grupa towarowa": "Grupa"}).to_dict('records'),
@@ -547,7 +567,7 @@ def create_dash(flask_app):
         elif tab == 'tab5':
             carwash_df = dff[dff["Grupa sklepowa"] == "MYJNIA INNE"]
             if carwash_df.empty:
-                return html.Div([
+                return html.Div(children=[
                     html.H3("Myjnia"),
                     html.P("Brak danych myjni dla wybranych filtrów.")
                 ])
@@ -600,24 +620,24 @@ def create_dash(flask_app):
             except Exception as e:
                 print("Błąd przy dodawaniu dni wolnych: ", e)
 
-            return html.Div([
+            return html.Div(children=[
                 html.H3("Myjnia"),
-                dbc.Row([
-                    dbc.Col(dcc.Graph(figure=fig_carwash), width=12)
+                dbc.Row(children=[
+                    dbc.Col(dcc.Graph(className="custom-graph",figure=fig_carwash), width=12)
                 ]),
-                dbc.Row([
-                    dbc.Col(dcc.Graph(figure=fig_sales), width=12)
+                dbc.Row(children=[
+                    dbc.Col(dcc.Graph(className="custom-graph",figure=fig_sales), width=12)
                 ]),
-                dbc.Row([
-                    dbc.Col(dcc.Graph(figure=fig_karnet), width=6),
-                    dbc.Col(dcc.Graph(figure=fig_program_all), width=6)
+                dbc.Row(children=[
+                    dbc.Col(dcc.Graph(className="custom-graph",figure=fig_karnet), width=6),
+                    dbc.Col(dcc.Graph(className="custom-graph",figure=fig_program_all), width=6)
                 ])
             ])
 
         elif tab == 'tab6':
             favorites = app.server.config.get('FAVORITES', set())
             if not favorites:
-                return html.Div([
+                return html.Div(children=[
                     html.H3("Ulubione"),
                     html.P("Nie dodano jeszcze żadnych wykresów do ulubionych.")
                 ])
@@ -628,7 +648,7 @@ def create_dash(flask_app):
                 if fig:
                     favorite_components.extend([
                         html.H4(fav),
-                        dcc.Graph(figure=fig),
+                        dcc.Graph(className="custom-graph",figure=fig),
                         dbc.Button("✖ Usuń z ulubionych",
                                    id={'type': 'remove-favorite', 'index': fav},
                                    color="danger",
@@ -636,7 +656,7 @@ def create_dash(flask_app):
                                    className="mb-3")
                     ])
 
-            return html.Div([
+            return html.Div(children=[
                 html.H3("Ulubione wykresy"),
                 html.P("Wybrane przez Ciebie wykresy:"),
                 *favorite_components
@@ -746,18 +766,18 @@ def create_dash(flask_app):
                     style_table={'overflowX': 'auto'},
                     page_size=10
                 ),
-                dcc.Graph(figure=fig_kasjer),
-                dcc.Graph(figure=fig_trans),
-                dcc.Graph(figure=fig_avg),
+                dcc.Graph(className="custom-graph",figure=fig_kasjer),
+                dcc.Graph(className="custom-graph",figure=fig_trans),
+                dcc.Graph(className="custom-graph",figure=fig_avg),
                 html.H4("Penetracja lojalnościowa per kasjer"),
-                dcc.Graph(figure=fig_penetracja)
+                dcc.Graph(className="custom-graph",figure=fig_penetracja)
             ]
 
             if fig_top1 and fig_top2:
                 content.extend([
                     html.H4("Analiza top produktów per kasjer"),
-                    dcc.Graph(figure=fig_top1),
-                    dcc.Graph(figure=fig_top2)
+                    dcc.Graph(className="custom-graph",figure=fig_top1),
+                    dcc.Graph(className="custom-graph",figure=fig_top2)
                 ])
 
             return html.Div(content)
@@ -855,5 +875,18 @@ def create_dash(flask_app):
             app.server.config['FAVORITES'] = favorites
 
         return render_tab_content('tab6', start_date, end_date, selected_stations, selected_groups, monthly_check)
+
+    @app.callback(
+        Output("filter-panel", "className"),
+        Output("filter-column", "width"),
+        Output("content-column", "width"),
+        Input("toggle-filter-button", "n_clicks"),
+        State("filter-panel", "className"),
+        prevent_initial_call=True
+    )
+    def toggle_filter_visibility(n_clicks, current_class):
+        is_hidden = "hidden" in (current_class or "")
+        new_class = "" if is_hidden else "hidden"
+        return new_class, (3 if is_hidden else 0), (9 if is_hidden else 12)
 
     return app
