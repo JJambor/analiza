@@ -1,0 +1,243 @@
+/* ====== GLOBAL ====== */
+
+body {
+    font-family: 'Open Sans', sans-serif;
+    background-color: #f9f9f9;
+    color: #333;
+}
+
+.main-container {
+    padding: 30px;
+    background-color: #ffffff;
+}
+
+/* ====== KARTY I SEKCJE ====== */
+
+.custom-card {
+    background-color: #ffffff;
+    padding: 20px;
+    margin-bottom: 30px;
+    border-radius: 6px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
+}
+
+.card-title {
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 20px;
+    color: #222;
+}
+
+/* ====== WYKRESY ====== */
+
+.custom-graph {
+    height: 400px;
+    padding: 10px;
+    background-color: white;
+    border-radius: 6px;
+    margin-bottom: 30px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+}
+
+/* ====== FORMULARZ FILTRÓW ====== */
+
+.filter-form {
+    font-size: 14px;
+}
+
+.filter-form label,
+.filter-form .form-label {
+    font-weight: 600;
+    margin-bottom: 6px;
+    color: #333;
+    display: block;
+}
+
+.filter-form .form-control {
+    border: none;
+    border-radius: 4px;
+    padding: 8px 12px;
+    font-size: 14px;
+    width: 100%;
+    box-shadow: none;
+}
+
+/* Zewnętrzne kontenery typu dropdown / datepicker mogą mieć ramkę */
+.filter-form .form-control-wrapper {
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    background-color: white;
+}
+
+/* Focus efekt */
+.filter-form .form-control:focus,
+.filter-form .form-control-wrapper:focus-within {
+    border-color: #888;
+    outline: none;
+}
+
+/* ====== CHECKBOXY ====== */
+
+.filter-form .form-check {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.filter-form .form-check input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: #4A90E2;
+}
+
+/* ====== BUTTONY ====== */
+
+.btn-primary {
+    background-color: #4A90E2 !important;
+    border-color: #4A90E2 !important;
+    font-weight: 600;
+    border-radius: 4px;
+}
+
+.btn-primary:hover {
+    background-color: #3b78c2 !important;
+    border-color: #3b78c2 !important;
+}
+
+.btn-secondary {
+    background-color: #999 !important;
+    border-color: #999 !important;
+    font-weight: 600;
+    border-radius: 4px;
+}
+
+.btn-secondary:hover {
+    background-color: #7a7a7a !important;
+    border-color: #7a7a7a !important;
+}
+
+/* ====== DROPDOWN MULTISELECT ====== */
+
+.Select__control {
+    border: none !important;
+    box-shadow: none !important;
+    background-color: transparent !important;
+    min-height: 44px !important;
+}
+
+.form-control-wrapper .Select__control {
+    padding: 4px !important;
+}
+
+.Select__multi-value {
+    background-color: #e53935 !important;
+    color: white !important;
+    border-radius: 3px !important;
+    padding: 4px 6px;
+    font-size: 13px;
+    margin: 3px;
+    display: inline-flex;
+    align-items: center;
+}
+
+.Select__multi-value__label {
+    padding: 0 4px;
+}
+
+.Select__multi-value__remove {
+    color: white !important;
+    cursor: pointer;
+}
+
+.Select__menu {
+    border-radius: 4px !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important;
+}
+
+/* ====== DATAPICKER ====== */
+
+.datepicker-wrapper {
+    position: relative;
+}
+
+.datepicker-wrapper i.fa-calendar {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #999;
+    pointer-events: none;
+    font-size: 18px;
+}
+
+.DateRangePickerInput {
+    border: 1px solid #ccc !important;
+    border-radius: 6px !important;
+    background-color: white !important;
+}
+
+.DateInput_input {
+    border: none !important;
+    box-shadow: none !important;
+    font-size: 14px;
+    padding: 10px 12px;
+    background-color: white !important;
+}
+
+/* ====== KOLAPS FILTRÓW ====== */
+
+.filter-toggle {
+    cursor: pointer;
+    font-weight: 600;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    font-size: 16px;
+    border-top: 1px solid #eee;
+    border-bottom: 1px solid #eee;
+}
+
+.filter-toggle i {
+    transition: transform 0.3s ease;
+}
+
+.filter-toggle.collapsed i {
+    transform: rotate(-90deg);
+}
+
+.filter-collapse {
+    transition: max-height 0.3s ease-out;
+    overflow: hidden;
+}
+
+/* ====== WIZUALNE INFO O ZAPISANYCH FILTRACH ====== */
+
+input[value]:not([value=""]),
+select:valid,
+.Select__multi-value {
+    box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.15);
+}
+
+/* ====== MARGINS & SPACING ====== */
+
+.mb-2 { margin-bottom: 0.5rem !important; }
+.mb-3 { margin-bottom: 1rem !important; }
+.mb-4 { margin-bottom: 1.5rem !important; }
+.me-2 { margin-right: 0.5rem !important; }
+/* === ANIMACJA POKAZYWANIA PANELU FILTRÓW === */
+
+#filter-panel {
+    overflow: hidden;
+    transition: max-height 0.4s ease, opacity 0.3s ease;
+    max-height: 2000px;
+    opacity: 1;
+}
+
+#filter-panel.hidden {
+    max-height: 0;
+    opacity: 0;
+    pointer-events: none;
+}
