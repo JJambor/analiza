@@ -269,21 +269,36 @@ def create_dash(flask_app):
 
             return html.Div(children=[
                 html.H3("Ogólny"),
-                html.Div([
-                    html.Div(f"Obrót netto (NFR+Fuel): {total_netto / 1_000_000:.1f} mln zł",
-                             style={'display': 'inline-block', 'marginRight': '20px'}),
-                    html.Div(f"Unikalne transakcje: {total_transactions / 1000:,.0f} tys.",
-                             style={'display': 'inline-block', 'marginRight': '20px'}),
-                    html.Div(f"Sprzedaż kawy: {round(kawa_netto / 1000):,} tys. zł",
-                             style={'display': 'inline-block', 'marginRight': '20px'}),
-                    html.Div(f"Sprzedaż food: {round(food_netto / 1000):,} tys. zł",
-                             style={'display': 'inline-block', 'marginRight': '20px'}),
-                    html.Div(f"Sprzedaż myjni: {round(myjnia_netto / 1000):,} tys. zł",
-                             style={'display': 'inline-block'})
-                ], style={'marginBottom': '20px'}),
 
-                dcc.Graph(className="custom-graph",figure=fig_netto),
-                dcc.Graph(className="custom-graph",figure=fig_tx),
+                html.Div([
+                    html.Div([
+                        html.Div("Obrót netto (NFR+Fuel)", className="metric-label"),
+                        html.Div(f"{total_netto / 1_000_000:.1f} mln zł", className="metric-value")
+                    ], className="metric-card"),
+
+                    html.Div([
+                        html.Div("Unikalne transakcje", className="metric-label"),
+                        html.Div(f"{total_transactions / 1000:,.0f} tys.", className="metric-value")
+                    ], className="metric-card"),
+
+                    html.Div([
+                        html.Div("Sprzedaż kawy", className="metric-label"),
+                        html.Div(f"{round(kawa_netto / 1000):,} tys. zł", className="metric-value")
+                    ], className="metric-card"),
+
+                    html.Div([
+                        html.Div("Sprzedaż food", className="metric-label"),
+                        html.Div(f"{round(food_netto / 1000):,} tys. zł", className="metric-value")
+                    ], className="metric-card"),
+
+                    html.Div([
+                        html.Div("Sprzedaż myjni", className="metric-label"),
+                        html.Div(f"{round(myjnia_netto / 1000):,} tys. zł", className="metric-value")
+                    ], className="metric-card"),
+                ], className="metric-container"),
+
+                dcc.Graph(className="custom-graph", figure=fig_netto),
+                dcc.Graph(className="custom-graph", figure=fig_tx),
 
                 html.H4("Heatmapa transakcji – dzień tygodnia vs godzina"),
                 dcc.RadioItems(
@@ -298,8 +313,9 @@ def create_dash(flask_app):
                     value="tx",
                     labelStyle={'display': 'inline-block', 'marginRight': '15px'}
                 ),
-                dcc.Graph(className="custom-graph",id='heatmap-graph')
+                dcc.Graph(className="custom-graph", id='heatmap-graph')
             ])
+
 
         elif tab == 'tab2':
             netto_bez_hois0 = dff[dff["HOIS"] != 0]["Netto"].sum()
@@ -362,10 +378,13 @@ def create_dash(flask_app):
 
             content = [
                 html.H3("Sklep"),
-                html.Div(children=[
-                    html.Div(f"Średnia wartość transakcji: {avg_transaction:.2f} zł",
-                             style={'fontWeight': 'bold', 'marginBottom': '20px'})
-                ]),
+                html.Div([
+                    html.Div([
+                        html.Div("Średnia wartość transakcji", className="metric-label"),
+                        html.Div(f"{avg_transaction:.2f} zł", className="metric-value")
+                    ], className="metric-card")
+                ], className="metric-container"),
+
                 dcc.Graph(className="custom-graph",figure=fig_shop_netto),
                 dcc.Graph(className="custom-graph",figure=fig_avg_tx),
             ]
@@ -527,42 +546,100 @@ def create_dash(flask_app):
 
             return html.Div(children=[
                 html.H3("Lojalność"),
-                dbc.Row(children=[
-                    dbc.Col(children=[
-                        html.Div(f"Średnia penetracja (obecny zakres): {penetration_current:.2f}%",
-                                 style={'fontWeight': 'bold'}),
-                        html.Div(f"Zmiana: {delta_value:.2f}%",
-                                 style={'color': 'green' if delta_value > 0 else 'red' if delta_value < 0 else 'gray'})
-                    ], width=6),
-                    dbc.Col(children=[
-                        html.Div(f"Średnia penetracja ({prev_label}): {penetration_prev:.2f}%")
-                    ], width=6)
-                ], style={'marginBottom': '20px'}),
+                html.Div([
+                    html.Div([
+                        html.Div("Średnia penetracja (obecny zakres)", className="metric-label"),
+                        html.Div(f"{penetration_current:.2f}%", className="metric-value"),
+                        html.Div(f"Zmiana: {delta_value:.2f}%", className=f"metric-delta " +
+                                                                          (
+                                                                              "positive" if delta_value > 0 else "negative" if delta_value < 0 else "neutral"))
+                    ], className="metric-card"),
+
+                    html.Div([
+                        html.Div(f"Średnia penetracja ({prev_label})", className="metric-label"),
+                        html.Div(f"{penetration_prev:.2f}%", className="metric-value")
+                    ], className="metric-card"),
+                ], className="metric-container"),
+
                 dcc.Graph(className="custom-graph",figure=fig_pen),
                 dcc.Graph(className="custom-graph",figure=fig_loyal),
                 dcc.Graph(className="custom-graph",figure=fig_combined),
-                html.H4("TOP / BOTTOM 5 grup towarowych wg penetracji lojalnościowej"),
-                dbc.Row(children=[
-                    dbc.Col(children=[
-                        html.H5("TOP 5"),
-                        dash_table.DataTable(
-                            data=merged_top.head(5).rename(columns={"Grupa towarowa": "Grupa"}).to_dict('records'),
-                            columns=[{"name": "Grupa", "id": "Grupa"},
-                                     {"name": "Penetracja", "id": "Penetracja"}],
-                            style_table={'overflowX': 'auto'}
-                        )
-                    ], width=6),
-                    dbc.Col(children=[
-                        html.H5("BOTTOM 5"),
-                        dash_table.DataTable(
-                            data=merged_top.tail(5).rename(columns={"Grupa towarowa": "Grupa"}).to_dict('records'),
-                            columns=[{"name": "Grupa", "id": "Grupa"},
-                                     {"name": "Penetracja", "id": "Penetracja"}],
-                            style_table={'overflowX': 'auto'}
-                        )
-                    ], width=6)
-                ])
-            ])
+                html.Div([
+                    html.Div([
+                        html.H4("TOP / BOTTOM 5 grup towarowych wg penetracji lojalnościowej"),
+                        dbc.Row([
+                            dbc.Col([
+                                html.Div("TOP 5", className="loyalty-table-title"),
+                                html.Div(
+                                    dash_table.DataTable(
+                                        data=merged_top.head(5).rename(columns={"Grupa towarowa": "Grupa"}).to_dict(
+                                            'records'),
+                                        columns=[
+                                            {"name": "Grupa", "id": "Grupa"},
+                                            {"name": "Penetracja (%)", "id": "Penetracja", "type": "numeric",
+                                             "format": {"specifier": ".2f"}}
+                                        ],
+                                        style_cell={
+                                            'fontFamily': 'Open Sans, sans-serif',
+                                            'fontSize': '14px',
+                                            'padding': '10px',
+                                            'border': 'none'
+                                        },
+                                        style_data_conditional=[
+                                            {'if': {'row_index': 'odd'}, 'backgroundColor': '#f9f9f9'},
+                                        ],
+                                        style_header={
+                                            'backgroundColor': '#f1f7ff',
+                                            'fontWeight': 'bold',
+                                            'borderBottom': '2px solid #e3e7ec'
+                                        },
+                                        style_table={
+                                            'overflowX': 'auto',
+                                            'borderRadius': '6px'
+                                        },
+                                        style_as_list_view=True
+                                    ),
+                                    className="loyalty-datatable"
+                                )
+                            ], width=6),
+                            dbc.Col([
+                                html.Div("BOTTOM 5", className="loyalty-table-title"),
+                                html.Div(
+                                    dash_table.DataTable(
+                                        data=merged_top.tail(5).rename(columns={"Grupa towarowa": "Grupa"}).to_dict(
+                                            'records'),
+                                        columns=[
+                                            {"name": "Grupa", "id": "Grupa"},
+                                            {"name": "Penetracja (%)", "id": "Penetracja", "type": "numeric",
+                                             "format": {"specifier": ".2f"}}
+                                        ],
+                                        style_cell={
+                                            'fontFamily': 'Open Sans, sans-serif',
+                                            'fontSize': '14px',
+                                            'padding': '10px',
+                                            'border': 'none'
+                                        },
+                                        style_data_conditional=[
+                                            {'if': {'row_index': 'odd'}, 'backgroundColor': '#f9f9f9'},
+                                        ],
+                                        style_header={
+                                            'backgroundColor': '#f1f7ff',
+                                            'fontWeight': 'bold',
+                                            'borderBottom': '2px solid #e3e7ec'
+                                        },
+                                        style_table={
+                                            'overflowX': 'auto',
+                                            'borderRadius': '6px'
+                                        },
+                                        style_as_list_view=True
+                                    ),
+                                    className="loyalty-datatable"
+                                )
+                            ], width=6)
+                        ], className="loyalty-table-container")
+                    ])
+
+            ])])
 
         elif tab == 'tab5':
             carwash_df = dff[dff["Grupa sklepowa"] == "MYJNIA INNE"]
@@ -759,13 +836,40 @@ def create_dash(flask_app):
 
             content = [
                 html.H3("Sprzedaż per kasjer"),
-                html.H4("Ranking kasjerów wg obrotu netto"),
-                dash_table.DataTable(
-                    data=kasjer_summary.head(20).to_dict('records'),
-                    columns=[{"name": col, "id": col} for col in kasjer_summary.columns],
-                    style_table={'overflowX': 'auto'},
-                    page_size=10
-                ),
+                html.Div([
+                    html.H4("Ranking kasjerów wg obrotu netto"),
+                    dbc.Row([
+                        dbc.Col([
+                            html.Div(
+                                dash_table.DataTable(
+                                    data=kasjer_summary.head(10).to_dict('records'),
+                                    columns=[{"name": col, "id": col} for col in kasjer_summary.columns],
+                                    style_cell={
+                                        'fontFamily': 'Open Sans, sans-serif',
+                                        'fontSize': '14px',
+                                        'padding': '10px',
+                                        'border': 'none'
+                                    },
+                                    style_data_conditional=[
+                                        {'if': {'row_index': 'odd'}, 'backgroundColor': '#f9f9f9'},
+                                    ],
+                                    style_header={
+                                        'backgroundColor': '#f1f7ff',
+                                        'fontWeight': 'bold',
+                                        'borderBottom': '2px solid #e3e7ec'
+                                    },
+                                    style_table={
+                                        'overflowX': 'auto',
+                                        'borderRadius': '6px'
+                                    },
+                                    style_as_list_view=True,
+                                    page_size=10
+                                ),
+                                className="loyalty-datatable"
+                            )
+                        ], width=12)
+                    ], className="loyalty-table-container")
+                ]),
                 dcc.Graph(className="custom-graph",figure=fig_kasjer),
                 dcc.Graph(className="custom-graph",figure=fig_trans),
                 dcc.Graph(className="custom-graph",figure=fig_avg),
