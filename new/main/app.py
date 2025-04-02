@@ -4,11 +4,11 @@ from dash import dcc, html, Input, Output, State, dash_table
 import dash_bootstrap_components as dbc
 import pandas as pd
 import plotly.express as px
-#import plotly.io as pio
+import plotly.io as pio
 import holidays
 import datetime
 import plotly.graph_objects as go
-#pio.templates.default = "seaborn"
+pio.templates.default = "plotly_white"
 
 # ---------------------------------------------
 # Funkcje pomocnicze
@@ -174,6 +174,7 @@ def create_dash(flask_app):
                     dcc.Tab(label='Ulubione', value='tab6'),
                     dcc.Tab(label='Sprzedaż per kasjer', value='tab7')
                 ]),
+
                 html.Div(id='tabs-content', style={'marginTop': '20px'})
             ], width=9)
         ])
