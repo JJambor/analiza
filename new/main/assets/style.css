@@ -31,7 +31,7 @@ body {
 /* ====== WYKRESY ====== */
 
 .custom-graph {
-    height: 400px;
+    height: auto;
     padding: 10px;
     background-color: white;
     border-radius: 6px;
