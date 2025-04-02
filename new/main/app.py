@@ -7,6 +7,7 @@ import plotly.express as px
 #import plotly.io as pio
 import holidays
 import datetime
+import plotly.graph_objects as go
 #pio.templates.default = "seaborn"
 
 # ---------------------------------------------
@@ -16,6 +17,14 @@ def get_free_days(start_date, end_date):
     pl_holidays = holidays.Poland(years=range(start_date.year, end_date.year + 1))
     date_range = pd.date_range(start=start_date, end=end_date)
     return [date for date in date_range if date.weekday() >= 5 or date in pl_holidays]
+
+def generate_metric_card(label, value, delta=None):
+    return html.Div(className="metric-card", children=[
+        html.Div(label, className="metric-label"),
+        html.Div(value, className="metric-value"),
+        html.Div(delta if delta else "", className=f"metric-delta {'neutral' if not delta else ''}")
+    ])
+
 
 
 def load_hois_map():
@@ -317,132 +326,306 @@ def create_dash(flask_app):
             ])
 
 
+
+
         elif tab == 'tab2':
+
             netto_bez_hois0 = dff[dff["HOIS"] != 0]["Netto"].sum()
+
             unikalne_transakcje = dff["#"].nunique()
+
             avg_transaction = netto_bez_hois0 / unikalne_transakcje if unikalne_transakcje > 0 else 0
 
             netto_shop_df = dff[dff["HOIS"] != 0].groupby(["Okres"] + ([category_col] if category_col else []))[
                 "Netto"].sum().reset_index()
+
             fig_shop_netto = px.line(netto_shop_df, x="Okres", y="Netto", color=category_col,
+
                                      title="Obrót sklepowy netto (bez HOIS 0)", markers=True)
 
             netto_bez_hois0_mies = dff[dff["HOIS"] != 0].groupby("Okres")["Netto"].sum()
+
             transakcje_all_mies = dff.groupby("Okres")["#"].nunique()
+
             avg_mies_df = pd.concat([netto_bez_hois0_mies, transakcje_all_mies], axis=1).reset_index()
+
             avg_mies_df.columns = ["Okres", "Netto_bez_HOIS0", "Transakcje_all"]
+
             avg_mies_df["Srednia"] = avg_mies_df["Netto_bez_HOIS0"] / avg_mies_df["Transakcje_all"]
+
             fig_avg_tx = px.line(avg_mies_df, x="Okres", y="Srednia", title="Średnia wartość transakcji", markers=True)
 
             try:
+
                 start_dt = pd.to_datetime(dff["Okres"].min())
+
                 end_dt = pd.to_datetime(dff["Okres"].max())
+
                 free_days = get_free_days(start_dt, end_dt)
+
                 for day in free_days:
                     fig_shop_netto.add_vline(x=day, line_dash="dot", line_color="gray", opacity=0.2)
+
                     fig_avg_tx.add_vline(x=day, line_dash="dot", line_color="gray", opacity=0.2)
+
             except Exception as e:
+
                 print("Błąd przy dodawaniu dni wolnych: ", e)
 
             df_nonzero_hois = dff[dff["HOIS"] != 0].copy()
+
             excluded_products = [
+
                 "myjnia jet zafiskalizowana",
+
                 "opłata opak. kubek 0,25zł",
+
                 "myjnia jet żeton"
+
             ]
+
             top_products = df_nonzero_hois[
+
                 ~df_nonzero_hois["Nazwa produktu"].str.lower().str.strip().isin(excluded_products)]
+
             top_products = top_products.groupby("Nazwa produktu")["Ilość"].sum().reset_index()
+
             top_products = top_products.sort_values(by="Ilość", ascending=False).head(10)
 
             fig_top_products = None
+
             if not top_products.empty:
                 fig_top_products = px.bar(top_products, x="Nazwa produktu", y="Ilość",
+
                                           title="Top 10 najlepiej sprzedających się produktów (bez HOIS 0)")
 
             fig_station_avg = None
+
             if category_col == "Stacja":
+
                 netto_bez_hois0_stacje = dff[dff["HOIS"] != 0].groupby(["Okres", "Stacja"])["Netto"].sum()
+
                 transakcje_all_stacje = dff.groupby(["Okres", "Stacja"])["#"].nunique()
+
                 avg_mies_stacje_df = pd.concat([netto_bez_hois0_stacje, transakcje_all_stacje], axis=1).reset_index()
+
                 avg_mies_stacje_df.columns = ["Okres", "Stacja", "Netto_bez_HOIS0", "Transakcje_all"]
+
                 avg_mies_stacje_df["Srednia"] = avg_mies_stacje_df["Netto_bez_HOIS0"] / avg_mies_stacje_df[
                     "Transakcje_all"]
+
                 fig_station_avg = px.line(avg_mies_stacje_df, x="Okres", y="Srednia", color="Stacja",
+
                                           title="Średnia wartość transakcji per stacja", markers=True)
+
                 try:
+
                     for day in free_days:
                         fig_station_avg.add_vline(x=day, line_dash="dot", line_color="gray", opacity=0.2)
+
                 except:
+
                     pass
 
             content = [
+
                 html.H3("Sklep"),
+
                 html.Div([
-                    html.Div([
-                        html.Div("Średnia wartość transakcji", className="metric-label"),
-                        html.Div(f"{avg_transaction:.2f} zł", className="metric-value")
-                    ], className="metric-card")
+
+                    generate_metric_card("💳 Średnia wartość transakcji", f"{avg_transaction:.2f} zł")
+
                 ], className="metric-container"),
 
-                dcc.Graph(className="custom-graph",figure=fig_shop_netto),
-                dcc.Graph(className="custom-graph",figure=fig_avg_tx),
+                dcc.Graph(className="custom-graph", figure=fig_shop_netto),
+
+                dcc.Graph(className="custom-graph", figure=fig_avg_tx),
+
             ]
 
             if fig_station_avg:
-                content.append(dcc.Graph(className="custom-graph",figure=fig_station_avg))
+                content.append(dcc.Graph(className="custom-graph", figure=fig_station_avg))
 
             if fig_top_products:
-                content.append(dcc.Graph(className="custom-graph",figure=fig_top_products))
+
+                content.append(dcc.Graph(className="custom-graph", figure=fig_top_products))
+
             else:
+
                 content.append(html.Div("Brak danych do wygenerowania wykresu TOP 10.",
+
                                         style={'color': 'gray', 'fontStyle': 'italic'}))
+
+            import plotly.graph_objects as go
+
+            pareto_df = df_nonzero_hois[
+
+                ~df_nonzero_hois["Nazwa produktu"].str.lower().str.strip().isin(excluded_products)
+
+            ].copy()
+
+            pareto_df = pareto_df.groupby("Nazwa produktu")["Netto"].sum().reset_index()
+
+            pareto_df = pareto_df.sort_values(by="Netto", ascending=False).head(30)
+
+            pareto_df["Kumulacja"] = pareto_df["Netto"].cumsum() / pareto_df["Netto"].sum() * 100
+
+            pareto_cutoff = pareto_df[pareto_df["Kumulacja"] <= 80].shape[0]
+
+            pareto_df["Kolor"] = ["#636EFA" if i < pareto_cutoff else "#B0BEC5" for i in range(len(pareto_df))]
+
+            fig_pareto = go.Figure()
+
+            fig_pareto.add_bar(
+
+                x=pareto_df["Nazwa produktu"],
+
+                y=pareto_df["Netto"],
+
+                marker_color=pareto_df["Kolor"],
+
+                name="Sprzedaż (netto)",
+
+                yaxis="y1",
+
+                hovertemplate='Produkt: %{x}<br>Netto: %{y:.2f} zł'
+
+            )
+
+            fig_pareto.add_trace(go.Scatter(
+
+                x=pareto_df["Nazwa produktu"],
+
+                y=pareto_df["Kumulacja"],
+
+                name="Kumulacja (%)",
+
+                yaxis="y2",
+
+                mode="lines+markers",
+
+                hovertemplate='Produkt: %{x}<br>Kumulacja: %{y:.2f}%'
+
+            ))
+
+            if pareto_cutoff < len(pareto_df):
+                content.append(html.Div(
+                    f"Granica 80% kumulacji: {pareto_df['Nazwa produktu'].iloc[pareto_cutoff]}",
+                    style={"color": "red", "fontWeight": "bold", "marginBottom": "10px"}
+                ))
+
+            fig_pareto.update_layout(
+
+                title="Wykres Pareto produktów (bez HOIS 0, wg wartości netto)",
+
+                xaxis=dict(title="Nazwa produktu", tickangle=45, tickfont=dict(size=10)),
+
+                yaxis=dict(title="Netto (zł)", side="left"),
+
+                yaxis2=dict(title="Kumulacja (%)", overlaying="y", side="right", range=[0, 110]),
+
+                legend=dict(x=0.85, y=1.15),
+
+                margin=dict(t=80)
+
+            )
+
+            content.append(dcc.Graph(className="custom-graph", figure=fig_pareto))
 
             return html.Div(content)
 
-        elif tab == 'tab3':
+        if tab == 'tab3':
+
             fuel_df = dff[dff["Grupa sklepowa"] == "PALIWO"]
 
             if fuel_df.empty:
                 return html.Div(children=[
-                    html.H3("Paliwo"),
+
+                    html.H3("Sprzedaż paliwa"),
+
                     html.P("Brak danych paliwowych dla wybranych filtrów.")
+
                 ])
 
+            # METRYKI
+
+            fuel_liters = fuel_df["Ilość"].sum()
+
+            fuel_tx = fuel_df["#"].nunique()
+
+            avg_liters_per_tx = fuel_liters / fuel_tx if fuel_tx != 0 else 0
+
+            metrics = html.Div(className="metric-container", children=[
+
+                generate_metric_card("Ilość litrów", f"{fuel_liters:,.0f} l", None),
+
+                generate_metric_card("Liczba transakcji paliwowych", f"{fuel_tx:,}", None),
+
+                generate_metric_card("Śr. litry / transakcja", f"{avg_liters_per_tx:.2f} l", None),
+
+            ])
+
             fuel_sales_grouped = fuel_df.groupby(["Okres"] + ([category_col] if category_col else []))[
+
                 "Ilość"].sum().reset_index()
+
             fig_fuel_sales = px.line(fuel_sales_grouped, x="Okres", y="Ilość", color=category_col,
+
                                      title="Sprzedaż paliw", markers=True)
 
             fuel_df["Typ klienta"] = fuel_df["B2B"].apply(lambda x: "B2B" if str(x).upper() == "TAK" else "B2C")
+
             customer_types = fuel_df.groupby("Typ klienta")["Ilość"].sum().reset_index()
+
             fig_customer_types = px.pie(customer_types, values="Ilość", names="Typ klienta",
+
                                         title="Stosunek tankowań B2C do B2B", hole=0.4)
+
             fig_customer_types.update_traces(textposition='inside', textinfo='percent+label')
 
             fuel_sales = fuel_df.groupby("Nazwa produktu")["Ilość"].sum().reset_index()
+
             fig_fuel_products = px.pie(fuel_sales, names="Nazwa produktu", values="Ilość",
+
                                        title="Udział produktów paliwowych")
 
             try:
+
                 start_dt = pd.to_datetime(dff["Okres"].min())
+
                 end_dt = pd.to_datetime(dff["Okres"].max())
+
                 free_days = get_free_days(start_dt, end_dt)
+
                 for day in free_days:
                     fig_fuel_sales.add_vline(x=day, line_dash="dot", line_color="gray", opacity=0.2)
+
             except Exception as e:
+
                 print("Błąd przy dodawaniu dni wolnych: ", e)
 
             return html.Div(children=[
+
                 html.H3("Paliwo"),
+
+                metrics,
+
                 html.H4("Sprzedaż paliw"),
+
                 dbc.Row(children=[
-                    dbc.Col(dcc.Graph(className="custom-graph",figure=fig_fuel_sales), width=12)
+
+                    dbc.Col(dcc.Graph(className="custom-graph", figure=fig_fuel_sales), width=12)
+
                 ]),
+
                 dbc.Row(children=[
-                    dbc.Col(dcc.Graph(className="custom-graph",figure=fig_customer_types), width=6),
-                    dbc.Col(dcc.Graph(className="custom-graph",figure=fig_fuel_products), width=6)
+
+                    dbc.Col(dcc.Graph(className="custom-graph", figure=fig_customer_types), width=6),
+
+                    dbc.Col(dcc.Graph(className="custom-graph", figure=fig_fuel_products), width=6)
+
                 ])
+
             ])
 
         elif tab == 'tab4':
@@ -641,75 +824,164 @@ def create_dash(flask_app):
 
             ])])
 
+
+
+
         elif tab == 'tab5':
+
             carwash_df = dff[dff["Grupa sklepowa"] == "MYJNIA INNE"]
+
             if carwash_df.empty:
                 return html.Div(children=[
+
                     html.H3("Myjnia"),
+
                     html.P("Brak danych myjni dla wybranych filtrów.")
+
                 ])
 
-            carwash_grouped = carwash_df.groupby(["Okres"] + ([category_col] if category_col else []))[
-                "Ilość"].sum().reset_index()
-            fig_carwash = px.line(carwash_grouped, x="Okres", y="Ilość", color=category_col,
-                                  title="Sprzedaż usług myjni", markers=True)
+            # METRYKI MYJNI (ilość sztuk zamiast zł)
 
-            sales_grouped = carwash_df.groupby(["Okres"] + ([category_col] if category_col else []))[
-                "Netto"].sum().reset_index()
-            fig_sales = px.line(sales_grouped, x="Okres", y="Netto", color=category_col,
-                                title="Sprzedaż netto grupy Myjnia", markers=True)
+            sales_total = carwash_df["Ilość"].sum()
 
-            carwash_df["Typ produktu"] = carwash_df["Nazwa produktu"].str.lower().apply(
-                lambda x: "Karnet" if x.startswith("karnet") else "Inne")
-            pie_df = carwash_df.groupby("Typ produktu")["Ilość"].sum().reset_index()
-            fig_karnet = px.pie(pie_df, values="Ilość", names="Typ produktu",
-                                title="Udział karnetów w sprzedaży MYJNIA INNE", hole=0.4)
-            fig_karnet.update_traces(textposition='inside', textinfo='percent+label')
+            sales_karnet = carwash_df[carwash_df["Nazwa produktu"].str.lower().str.startswith("karnet")]["Ilość"].sum()
 
             def classify_program_all(nazwa):
+
                 nazwa = nazwa.lower()
+
                 if "standard" in nazwa:
+
                     return "Myjnia Standard"
+
                 elif "express" in nazwa:
+
                     return "Myjnia Express"
+
                 else:
+
                     return "Pozostałe"
 
             carwash_df["Program"] = carwash_df["Nazwa produktu"].apply(classify_program_all)
+
+            program_sales = carwash_df.groupby("Program")["Ilość"].sum().to_dict()
+
+            carwash_df["Typ produktu"] = carwash_df["Nazwa produktu"].str.lower().apply(
+
+                lambda x: "Karnet" if x.startswith("karnet") else "Inne"
+
+            )
+
+            all_tx = dff["#"].nunique()
+
+            carwash_tx = carwash_df["#"].nunique()
+
+            penetration = (carwash_tx / all_tx) * 100 if all_tx else 0
+
+            metric_carwash = html.Div(className="metric-container", children=[
+
+                generate_metric_card("Sprzedane programy", f"{sales_total:,.0f} szt."),
+
+                generate_metric_card("Udział myjnii", f"{penetration:.1f}%"),
+
+                generate_metric_card("Karnety", f"{sales_karnet:,.0f} szt."),
+
+                generate_metric_card("Standard", f"{program_sales.get('Myjnia Standard', 0):,.0f} szt."),
+
+                generate_metric_card("xpress", f"{program_sales.get('Myjnia Express', 0):,.0f} szt.")
+
+
+
+            ])
+
+            carwash_grouped = carwash_df.groupby(["Okres"] + ([category_col] if category_col else []))[
+
+                "Ilość"].sum().reset_index()
+
+            fig_carwash = px.line(carwash_grouped, x="Okres", y="Ilość", color=category_col,
+
+                                  title="Sprzedaż usług myjni", markers=True)
+
+            sales_grouped = carwash_df.groupby(["Okres"] + ([category_col] if category_col else []))[
+
+                "Netto"].sum().reset_index()
+
+            fig_sales = px.line(sales_grouped, x="Okres", y="Netto", color=category_col,
+
+                                title="Sprzedaż netto grupy Myjnia", markers=True)
+
+            pie_df = carwash_df.groupby("Typ produktu")["Ilość"].sum().reset_index()
+
+            fig_karnet = px.pie(pie_df, values="Ilość", names="Typ produktu",
+
+                                title="Udział karnetów w sprzedaży MYJNIA INNE", hole=0.4)
+
+            fig_karnet.update_traces(textposition='inside', textinfo='percent+label')
+
             program_df_all = carwash_df.groupby("Program")["Ilość"].sum().reset_index()
 
             fig_program_all = px.pie(
+
                 program_df_all,
+
                 values="Ilość",
+
                 names="Program",
+
                 title="Udział programów Standard i Express w sprzedaży MYJNIA INNE",
+
                 hole=0.4
+
             )
+
             fig_program_all.update_traces(textposition='inside', textinfo='percent+label')
 
             try:
+
                 start_dt = pd.to_datetime(dff["Okres"].min())
+
                 end_dt = pd.to_datetime(dff["Okres"].max())
+
                 free_days = get_free_days(start_dt, end_dt)
+
                 for day in free_days:
                     fig_carwash.add_vline(x=day, line_dash="dot", line_color="gray", opacity=0.2)
+
                     fig_sales.add_vline(x=day, line_dash="dot", line_color="gray", opacity=0.2)
+
             except Exception as e:
+
                 print("Błąd przy dodawaniu dni wolnych: ", e)
 
             return html.Div(children=[
+
                 html.H3("Myjnia"),
+
+                metric_carwash,
+
                 dbc.Row(children=[
-                    dbc.Col(dcc.Graph(className="custom-graph",figure=fig_carwash), width=12)
+
+                    dbc.Col(dcc.Graph(className="custom-graph", figure=fig_carwash), width=12)
+
                 ]),
+
                 dbc.Row(children=[
-                    dbc.Col(dcc.Graph(className="custom-graph",figure=fig_sales), width=12)
+
+                    dbc.Col(dcc.Graph(className="custom-graph", figure=fig_sales), width=12)
+
                 ]),
+
                 dbc.Row(children=[
-                    dbc.Col(dcc.Graph(className="custom-graph",figure=fig_karnet), width=6),
-                    dbc.Col(dcc.Graph(className="custom-graph",figure=fig_program_all), width=6)
+
+                    dbc.Col(dcc.Graph(className="custom-graph", figure=fig_karnet), width=6),
+
+                    dbc.Col(dcc.Graph(className="custom-graph", figure=fig_program_all), width=6)
+
                 ])
+
             ])
+
+
 
         elif tab == 'tab6':
             favorites = app.server.config.get('FAVORITES', set())
