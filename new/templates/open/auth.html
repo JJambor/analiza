@@ -1,13 +1,22 @@
 {% extends 'base.html' %}
 
-{% block title %}Strona główna{% endblock %}
+{% block title %}Logowanie{% endblock %}
 
 {% block content %}
-<form class="form" action="/auth/login" method="POST">
-    <label for="email">Email:</label>
-    <input name="email" id="email" type="text">
-    <label for="password">Hasło:</label>
-    <input name="password" id="password" type="password">
-    <button role="button" type="submit">Zaloguj</button>
-</form>
+<div class="login-container">
+    <div class="login-card">
+        <h2>Logowanie do Kompas</h2>
+        <form action="/auth/login" method="POST">
+            <div class="form-group">
+                <label for="email">Email:</label>
+                <input name="email" id="email" type="email" required>
+            </div>
+            <div class="form-group">
+                <label for="password">Hasło:</label>
+                <input name="password" id="password" type="password" required>
+            </div>
+            <button type="submit">Zaloguj się</button>
+        </form>
+    </div>
+</div>
 {% endblock %}
