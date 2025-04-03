@@ -164,7 +164,6 @@ body {
     background-color: #ffffff;
     color: #333;
     padding: 8px 16px;
-    /*margin-right: 6px;*/
     border: 1px solid #e0e0e0;
     border-bottom: none;
     border-radius: 8px 8px 0 0;
@@ -174,8 +173,9 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    min-width: 110px;
-    max-width: 160px;
+    flex: 1 1 0;           /* <- dodaj to */
+    min-width: 0;          /* <- dodaj to */
+    max-width: none;       /* <- dodaj to */
     height: auto;
     line-height: 1.3;
     text-align: center;
