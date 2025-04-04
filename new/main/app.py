@@ -8,7 +8,45 @@ import plotly.io as pio
 import holidays
 import datetime
 import plotly.graph_objects as go
-pio.templates.default = "plotly_white"
+corporate_blue_palette = [
+    "#0F4C81",  # Dark Navy Blue
+    "#2A9D8F",  # Soft Teal
+    "#A8DADC",  # Light Aqua
+    "#E9F5FB",  # Very Light Blue
+    "#457B9D",  # Blue Steel
+    "#1D3557",  # Deep Blue
+    "#74C0FC",  # Sky Blue Accent
+    "#BFD7EA",  # Soft Grayish Blue
+    "#F1FAFB",  # Almost White
+    "#5DADE2",  # Brighter Blue Accent
+]
+
+pio.templates["corporate_blue"] = pio.templates["plotly_white"]
+pio.templates["corporate_blue"]["layout"]["colorway"] = corporate_blue_palette
+pio.templates["corporate_blue"]["layout"]["font"] = {
+    "family": "Segoe UI, Open Sans, sans-serif",
+    "size": 15,
+    "color": "#1D3557"
+}
+pio.templates["corporate_blue"]["layout"]["title"] = {
+    "x": 0.05,
+    "xanchor": "left",
+    "font": {
+        "size": 20,
+        "color": "#0F4C81",
+        "family": "Segoe UI Semibold, sans-serif"
+    }
+}
+pio.templates["corporate_blue"]["layout"]["plot_bgcolor"] = "#FFFFFF"
+pio.templates["corporate_blue"]["layout"]["paper_bgcolor"] = "#FFFFFF"
+pio.templates["corporate_blue"]["layout"]["legend"] = {
+    "bgcolor": "rgba(0,0,0,0)",
+    "bordercolor": "#E0E0E0",
+    "borderwidth": 1
+}
+
+pio.templates.default = "corporate_blue"
+
 
 # ---------------------------------------------
 # Funkcje pomocnicze
@@ -88,22 +126,20 @@ def create_dash(flask_app):
         external_stylesheets=[dbc.themes.BOOTSTRAP],
         server=flask_app,
         url_base_pathname="/dashboard/",
-        suppress_callback_exceptions=True  # Added to handle dynamic components
+        suppress_callback_exceptions=True,  # Added to handle dynamic components
+        title="Kompas"
     )
 
     # Mock session state for favorites
     app.server.config['FAVORITES'] = set()
 
     app.layout = dbc.Container([
-    # Przycisk u góry
     dbc.Button(
         "Pokaż / Ukryj filtry", id="toggle-filter-button",
         color="primary", className="mb-3", n_clicks=0
     ),
 
-    # Kontener z filtrem i contentem
     html.Div([
-        # Filtry (będące DIVem, nie dbc.Col)
         html.Div(id="filter-column", children=[
             html.Div(id="filter-panel", children=[
                 dbc.Card(
@@ -137,7 +173,7 @@ def create_dash(flask_app):
                                     options=[{'label': s, 'value': s} for s in station_options],
                                     value=station_options,
                                     multi=True,
-                                    className="form-control"
+                                    className="dropdown-stacje"
                                 )
                             ], className="mb-4"),
 
@@ -154,7 +190,20 @@ def create_dash(flask_app):
                                     options=[{'label': g, 'value': g} for g in group_options],
                                     value=group_options,
                                     multi=True,
-                                    className="form-control"
+                                    className="dropdown-grupy"
+                                )
+                            ], className="mb-4"),
+
+                            html.Div([
+                                html.Label("Typ transakcji B2B:", className="form-label"),
+                                dcc.Checklist(
+                                    id='b2b-checklist',
+                                    options=[
+                                        {'label': 'B2B', 'value': 'Tak'},
+                                        {'label': 'B2C', 'value': 'Nie'}
+                                    ],
+                                    value=['Tak', 'Nie'],
+                                    className="form-check"
                                 )
                             ], className="mb-4"),
 
@@ -171,7 +220,6 @@ def create_dash(flask_app):
             ])
         ], className="responsive-filter"),
 
-        # Główna zawartość
         html.Div(id="content-column", children=[
             dcc.Tabs(id='tabs', value='tab1', children=[
                 dcc.Tab(label='Ogólny', value='tab1'),
@@ -186,6 +234,8 @@ def create_dash(flask_app):
         ], className="responsive-content")
     ], className="dashboard-layout")
 ], className="main-container", fluid=True)
+
+
 
     # ---------------------------------------------
     # Callback dla przycisków stacji
@@ -241,23 +291,36 @@ def create_dash(flask_app):
         Input('date-picker', 'end_date'),
         Input('station-dropdown', 'value'),
         Input('group-dropdown', 'value'),
-        Input('monthly-check', 'value')
+        Input('monthly-check', 'value'),
+        Input('b2b-checklist', 'value')
+
     )
-    def render_tab_content(tab, start_date, end_date, selected_stations, selected_groups, monthly_check):
+    def render_tab_content(tab, start_date, end_date, selected_stations, selected_groups, monthly_check, selected_b2b):
         start_date_obj = pd.to_datetime(start_date).date()
         end_date_obj = pd.to_datetime(end_date).date()
-        dff = df[(df["Data"] >= start_date_obj) &
-                 (df["Data"] <= end_date_obj) &
-                 (df["Stacja"].isin(selected_stations)) &
-                 (df["Grupa towarowa"].isin(selected_groups))].copy()
+
+        # Filtrowanie danych
+        dff = df[
+            (df["Data"] >= start_date_obj) &
+            (df["Data"] <= end_date_obj) &
+            (df["Stacja"].isin(selected_stations)) &
+            (df["Grupa towarowa"].isin(selected_groups)) &
+            (df["B2B"].isin(selected_b2b))  # filtr B2B
+        ].copy()
+
+        # Usunięcie loginu technicznego
         dff = dff[dff["Login POS"] != 99999].copy()
 
+        # Obsługa widoku miesięcznego
         if 'monthly' in monthly_check:
             dff["Okres"] = pd.to_datetime(dff["Data"]).dt.to_period("M").astype(str)
             category_col = "Stacja"
         else:
             dff["Okres"] = dff["Data"]
             category_col = None
+
+    # Dalej możesz robić wykresy itp. na podstawie dff
+    # return np. wykres, tabela lub komponent html
 
         if tab == 'tab1':
             total_netto = dff["Netto"].sum()
@@ -286,7 +349,7 @@ def create_dash(flask_app):
                 print("Błąd przy dodawaniu dni wolnych: ", e)
 
             return html.Div(children=[
-                html.H3("Ogólny"),
+                html.H4("Ogólny"),
 
                 html.Div([
                     html.Div([
@@ -295,7 +358,7 @@ def create_dash(flask_app):
                     ], className="metric-card"),
 
                     html.Div([
-                        html.Div("Unikalne transakcje", className="metric-label"),
+                        html.Div("Ilość transakcji", className="metric-label"),
                         html.Div(f"{total_transactions / 1000:,.0f} tys.", className="metric-value")
                     ], className="metric-card"),
 
@@ -318,7 +381,7 @@ def create_dash(flask_app):
                 dcc.Graph(className="custom-graph", figure=fig_netto),
                 dcc.Graph(className="custom-graph", figure=fig_tx),
 
-                html.H4("Heatmapa transakcji – dzień tygodnia vs godzina"),
+                html.H4("Heatmapa"),
                 dcc.RadioItems(
                     id='metric-selector',
                     options=[
@@ -438,18 +501,23 @@ def create_dash(flask_app):
 
             content = [
 
-                html.H3("Sklep"),
+                html.H4("Sklep"),
 
                 html.Div([
+                    html.Div([
+                        html.Div("Obrót sklepowy netto", className="metric-label"),
+                        html.Div(f"{netto_bez_hois0 / 1_000_000:.2f} mln zł", className="metric-value")
+                    ], className="metric-card"),
 
-                    generate_metric_card("💳 Średnia wartość transakcji", f"{avg_transaction:.2f} zł")
-
+                    html.Div([
+                        html.Div("Średnia wartość transakcji", className="metric-label"),
+                        html.Div(f"{avg_transaction:.2f} zł", className="metric-value")
+                    ], className="metric-card"),
                 ], className="metric-container"),
 
                 dcc.Graph(className="custom-graph", figure=fig_shop_netto),
 
                 dcc.Graph(className="custom-graph", figure=fig_avg_tx),
-
             ]
 
             if fig_station_avg:
@@ -481,7 +549,7 @@ def create_dash(flask_app):
 
             pareto_cutoff = pareto_df[pareto_df["Kumulacja"] <= 80].shape[0]
 
-            pareto_df["Kolor"] = ["#636EFA" if i < pareto_cutoff else "#B0BEC5" for i in range(len(pareto_df))]
+            pareto_df["Kolor"] = ["#0F4C81" if i < pareto_cutoff else "#B0BEC5" for i in range(len(pareto_df))]
 
             fig_pareto = go.Figure()
 
@@ -520,7 +588,7 @@ def create_dash(flask_app):
             if pareto_cutoff < len(pareto_df):
                 content.append(html.Div(
                     f"Granica 80% kumulacji: {pareto_df['Nazwa produktu'].iloc[pareto_cutoff]}",
-                    style={"color": "red", "fontWeight": "bold", "marginBottom": "10px"}
+                    style={"color": "black", "fontWeight": "bold", "marginBottom": "10px"}
                 ))
 
             fig_pareto.update_layout(
@@ -624,7 +692,7 @@ def create_dash(flask_app):
                 print("Błąd przy dodawaniu dni wolnych: ", e)
 
             return html.Div(children=[
-                html.H3("Paliwo"),
+                html.H4("Paliwo"),
                 metrics,
 
                 html.H4("Sprzedaż paliw"),
@@ -745,7 +813,7 @@ def create_dash(flask_app):
             merged_top["Penetracja"] = merged_top["Penetracja"].round(2).astype(str) + "%"
 
             return html.Div(children=[
-                html.H3("Lojalność"),
+                html.H4("Lojalność"),
                 html.Div([
                     html.Div([
                         html.Div("Średnia penetracja (obecny zakres)", className="metric-label"),
@@ -766,7 +834,7 @@ def create_dash(flask_app):
                 dcc.Graph(className="custom-graph",figure=fig_combined),
                 html.Div([
                     html.Div([
-                        html.H4("TOP / BOTTOM 5 grup towarowych wg penetracji lojalnościowej"),
+                        html.H6("TOP / BOTTOM 5 grup towarowych wg penetracji lojalnościowej"),
                         dbc.Row([
                             dbc.Col([
                                 html.Div("TOP 5", className="loyalty-table-title"),
@@ -972,7 +1040,7 @@ def create_dash(flask_app):
 
             return html.Div(children=[
 
-                html.H3("Myjnia"),
+                html.H4("Myjnia"),
 
                 metric_carwash,
 
@@ -1069,9 +1137,9 @@ def create_dash(flask_app):
             fig_penetracja.update_layout(yaxis_title="%", xaxis_title="Kasjer")
             # Sekcja layout
             content = [
-                html.H3("Sprzedaż per kasjer"),
+                html.H4("Sprzedaż per kasjer"),
                 html.Div([
-                    html.H4("Ranking kasjerów wg obrotu netto"),
+                    html.H6("Ranking kasjerów wg obrotu netto"),
                     dbc.Row([
                         dbc.Col([
                             html.Div(
@@ -1124,7 +1192,7 @@ def create_dash(flask_app):
                 )
 
                 content.extend([
-                    html.H4("Analiza top produktów per kasjer"),
+                    html.H6("Analiza top produktów per kasjer"),
                     html.Div([
                         html.Label("Wybierz miesiąc:"),
                         dropdown_top_month
