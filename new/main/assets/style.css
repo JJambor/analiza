@@ -89,33 +89,33 @@ body {
 .filter-form .form-check input[type="checkbox"] {
     width: 18px;
     height: 18px;
-    accent-color: #4A90E2;
+    accent-color: #0F4C81;
 }
 
 /* ====== BUTTONY ====== */
 
 .btn-primary {
-    background-color: #4A90E2 !important;
-    border-color: #4A90E2 !important;
+    background-color: #0F4C81 !important;
+    border-color: #0F4C81 !important;
     font-weight: 600;
     border-radius: 4px;
 }
 
 .btn-primary:hover {
-    background-color: #3b78c2 !important;
-    border-color: #3b78c2 !important;
+    background-color: #1D3557 !important;
+    border-color: #1D3557 !important;
 }
 
 .btn-secondary {
-    background-color: #999 !important;
-    border-color: #999 !important;
+    background-color: #457B9D !important;
+    border-color: #457B9D !important;
     font-weight: 600;
     border-radius: 4px;
 }
 
 .btn-secondary:hover {
-    background-color: #7a7a7a !important;
-    border-color: #7a7a7a !important;
+    background-color: #2A9D8F !important;
+    border-color: #2A9D8F !important;
 }
 
 /* ====== DROPDOWN MULTISELECT ====== */
@@ -131,29 +131,35 @@ body {
     padding: 4px !important;
 }
 
-.Select__multi-value {
-    background-color: #e53935 !important;
+.form-control .Select__multi-value {
+    background-color: #0F4C81 !important;
     color: white !important;
-    border-radius: 3px !important;
+    font-weight: 600;
+    border-radius: 4px;
     padding: 4px 6px;
     font-size: 13px;
     margin: 3px;
     display: inline-flex;
     align-items: center;
+    box-shadow: 0 0 0 2px rgba(15, 76, 129, 0.2);
 }
 
-.Select__multi-value__label {
-    padding: 0 4px;
-}
-
-.Select__multi-value__remove {
+.form-control .Select__multi-value__remove {
     color: white !important;
-    cursor: pointer;
+    opacity: 0.8;
 }
+
+.form-control .Select__multi-value__remove:hover {
+    color: #FFD700 !important;
+    opacity: 1;
+}
+
 
 .Select__menu {
     border-radius: 4px !important;
     box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important;
+    
+
 }
 
 
@@ -186,15 +192,15 @@ body {
 }
 
 .tab:hover {
-    background-color: #f5faff;
+    background-color: #BFD7EA;
     box-shadow: 0 3px 6px rgba(0,0,0,0.06);
 }
 
 .tab--selected {
-    background-color: #4A90E2;
+    background-color: #0F4C81;
     color: white;
     font-weight: 600;
-    border: 1px solid #4A90E2;
+    border: 1px solid #0F4C81;
     border-bottom: none;
     box-shadow: 0 3px 8px rgba(0, 0, 0, 0.08);
 }
@@ -221,7 +227,7 @@ body {
     right: 12px;
     top: 50%;
     transform: translateY(-50%);
-    color: #999;
+    color: #457B9D;
     pointer-events: none;
     font-size: 18px;
 }
@@ -272,7 +278,7 @@ body {
 input[value]:not([value=""]),
 select:valid,
 .Select__multi-value {
-    box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.15);
+    box-shadow: 0 0 0 2px rgba(15, 76, 129, 0.15);
 }
 
 /* ====== MARGINS & SPACING ====== */
@@ -305,8 +311,8 @@ select:valid,
 
 .metric-card {
     flex: 1 1 220px;
-    background: linear-gradient(135deg, #ffffff, #f4f6f9);
-    border: 1px solid #e3e7ec;
+    background: linear-gradient(135deg, #ffffff, #f0f6fb);
+    border: 1px solid #f0f6fb;
     border-radius: 10px;
     padding: 20px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.03);
@@ -323,7 +329,7 @@ select:valid,
 
 .metric-label {
     font-size: 13px;
-    color: #6c757d;
+    color: #0F4C81;
     margin-bottom: 4px;
     font-weight: 600;
     text-transform: uppercase;
@@ -333,7 +339,7 @@ select:valid,
 .metric-value {
     font-size: 24px;
     font-weight: 700;
-    color: #1f2937;
+    color: #1D3557;
 }
 
 .metric-delta {
@@ -351,7 +357,7 @@ select:valid,
 }
 
 .metric-delta.neutral {
-    color: #6c757d; /* szary */
+    color: #457B9D; /* szary */
 }
 .loyalty-table-container {
     margin-top: 30px;
@@ -376,8 +382,8 @@ select:valid,
 
 .loyalty-datatable .dash-header {
     font-weight: bold;
-    background-color: #f1f7ff;
-    border-bottom: 2px solid #e3e7ec;
+    background-color: #E9F5FB;
+    border-bottom: 2px solid #A8DADC;
 }
 
 .loyalty-datatable .dash-cell {
@@ -424,6 +430,29 @@ select:valid,
 
 .responsive-content.expanded {
     width: 100% !important;
+}
+.dropdown-grupy .Select__multi-value {
+    background-color: #000000 !important;
+    color: white !important;
+}
+
+/* Ewentualne inne dropdowny */
+.dropdown-stacje .Select__multi-value {
+    background-color: #2a9d8f !important;
+    color: white !important;
+}
+/* Styluje tagi wybranych wartości w dropdownie grup towarowych */
+.dropdown-grupy div[class*='multiValue'] {
+    background-color: #0F4C81 !important;
+    color: white !important;
+    font-weight: 600;
+    border-radius: 4px;
+    padding: 4px 6px;
+    font-size: 13px;
+    margin: 3px;
+    display: inline-flex;
+    align-items: center;
+    box-shadow: 0 0 0 2px rgba(15, 76, 129, 0.2);
 }
 
 
@@ -474,6 +503,46 @@ select:valid,
 
     .loyalty-datatable {
         min-width: 600px;
+    }
+    .metric-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        justify-content: space-between;
+    }
+    .metric-card {
+        flex: 0 0 48%;
+        height: auto;
+        padding: 12px 10px;
+        border-radius: 8px;
+    }
+
+    .metric-label {
+        font-size: 11px;
+        margin-bottom: 4px;
+    }
+
+    .metric-value {
+        font-size: 16px;
+        font-weight: 700;
+    }
+
+    .metric-delta {
+        font-size: 12px;
+    }
+    .custom-graph {
+        width: 100% !important;
+        margin-bottom: 20px;
+    }
+
+    .graph-row {
+        display: flex !important;
+        flex-direction: column !important;
+        flex-wrap: nowrap !important;
+    }
+
+    .graph-row > .custom-graph {
+        width: 100% !important;
     }
     
 }
