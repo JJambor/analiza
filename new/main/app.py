@@ -612,8 +612,32 @@ def create_dash(flask_app):
             return html.Div(content)
 
             
-        if tab == 'tab3':
-            fuel_df = dff[dff["Grupa sklepowa"] == "PALIWO"]
+        elif tab == 'tab3':
+            global df_cached, hois_cached
+            df_all = df_cached.copy()
+
+            # Dodaj brakujące kolumny
+            df_all["Grupa towarowa"] = df_all["HOIS"].map(lambda x: hois_cached.get(x, ("Nieznana", "Nieznana"))[0])
+            df_all["Grupa sklepowa"] = df_all["HOIS"].map(lambda x: hois_cached.get(x, ("Nieznana", "Nieznana"))[1])
+
+            # Dodaj "Okres"
+            if 'monthly' in monthly_check:
+                df_all["Okres"] = pd.to_datetime(df_all["Data"]).dt.to_period("M").astype(str)
+                category_col = "Stacja"
+            else:
+                df_all["Okres"] = df_all["Data"]
+                category_col = None
+
+            # Filtrowanie tylko PALIWO
+            fuel_df = df_all[
+                (df_all["Data"] >= start_date_obj) &
+                (df_all["Data"] <= end_date_obj) &
+                (df_all["Stacja"].isin(selected_stations)) &
+                (df_all["Grupa towarowa"].isin(selected_groups)) &
+                (df_all["Grupa sklepowa"] == "PALIWO") &
+                (df_all["B2B"].isin(selected_b2b)) &
+                (df_all["Login POS"] != 99999)
+            ].copy()
 
             if fuel_df.empty:
                 return html.Div(children=[
@@ -627,47 +651,43 @@ def create_dash(flask_app):
             avg_liters_per_tx = fuel_liters / fuel_tx if fuel_tx != 0 else 0
 
             metrics = html.Div(className="metric-container", children=[
-                generate_metric_card("Ilość litrów", f"{fuel_liters:,.0f} l", None),
-                generate_metric_card("Liczba transakcji paliwowych", f"{fuel_tx:,}", None),
-                generate_metric_card("Śr. litry / transakcja", f"{avg_liters_per_tx:.2f} l", None),
+                generate_metric_card("Ilość litrów", f"{fuel_liters:,.0f} l"),
+                generate_metric_card("Liczba transakcji paliwowych", f"{fuel_tx:,}"),
+                generate_metric_card("Śr. litry / transakcja", f"{avg_liters_per_tx:.2f} l"),
             ])
 
+            # Wykres sprzedaży paliwa
             fuel_sales_grouped = fuel_df.groupby(["Okres"] + ([category_col] if category_col else []))["Ilość"].sum().reset_index()
             fig_fuel_sales = px.line(fuel_sales_grouped, x="Okres", y="Ilość", color=category_col,
-                                     title="Sprzedaż paliw", markers=True)
+                                    title="Sprzedaż paliw", markers=True)
 
-            # WYKRES FLOTOWY
+            # Potencjał flotowy
             non_b2b_invoice = fuel_df[(fuel_df["B2B"] != "TAK") & (fuel_df["Dokument"].str.upper() == "FAKTURA")]
-            non_b2b_invoice_count = len(non_b2b_invoice)
-            total_transactions = len(fuel_df)
-
             flota_data = pd.DataFrame({
                 "Typ": ["Potencjalni klienci flotowi", "Pozostali klienci"],
-                "Liczba": [non_b2b_invoice_count, total_transactions - non_b2b_invoice_count]
+                "Liczba": [len(non_b2b_invoice), len(fuel_df) - len(non_b2b_invoice)]
             })
-
-            fig_flota = px.pie(
-                flota_data,
-                names="Typ",
-                values="Liczba",
-                title="Potencjał do założenia karty flotowej",
-                hole=0.4
-            )
+            fig_flota = px.pie(flota_data, names="Typ", values="Liczba",
+                            title="Potencjał do założenia karty flotowej", hole=0.4)
             fig_flota.update_traces(textposition='inside', textinfo='percent+label')
 
-            # WYKRES: paliwo + sklep vs tylko paliwo (na podstawie DFF)
-            tx_analysis = dff.groupby("#")["HOIS"].apply(lambda x: (x == 0).all()).reset_index(name="Tylko paliwo")
-            tx_summary = tx_analysis["Tylko paliwo"].value_counts().rename(index={True: "Tylko paliwo", False: "Paliwo + sklep"})
-            tx_df = tx_summary.reset_index()
-            tx_df.columns = ["Typ", "Liczba"]
+            # Analiza transakcji: paliwo vs paliwo + sklep
+            all_tx = df_all[
+                (df_all["Data"] >= start_date_obj) &
+                (df_all["Data"] <= end_date_obj) &
+                (df_all["Stacja"].isin(selected_stations)) &
+                (df_all["Grupa towarowa"].isin(selected_groups)) &
+                (df_all["Login POS"] != 99999)
+            ][["#", "HOIS"]].copy()
 
-            fig_mix = px.pie(
-                tx_df,
-                names="Typ",
-                values="Liczba",
-                title="Transakcje paliwowe: tylko paliwo vs paliwo + sklep",
-                hole=0.4
-            )
+            tx_agg = all_tx.groupby("#")["HOIS"].agg(['min', 'max']).reset_index()
+            tx_agg["Typ"] = tx_agg.apply(lambda row: "Tylko paliwo" if row["min"] == 0 and row["max"] == 0 else "Paliwo + sklep", axis=1)
+            tx_summary = tx_agg["Typ"].value_counts().reset_index()
+            tx_summary.columns = ["Typ", "Liczba"]
+
+
+            fig_mix = px.pie(tx_summary, names="Typ", values="Liczba",
+                            title="Transakcje paliwowe: tylko paliwo vs paliwo + sklep", hole=0.4)
             fig_mix.update_traces(textposition='inside', textinfo='percent+label')
 
             # B2B / B2C
@@ -678,13 +698,14 @@ def create_dash(flask_app):
             fig_customer_types.update_traces(textposition='inside', textinfo='percent+label')
 
             # Udział produktów paliwowych
-            fuel_sales = fuel_df.groupby("Nazwa produktu")["Ilość"].sum().reset_index()
+            fuel_sales = fuel_df.groupby("Nazwa produktu")["Ilość"].sum().nlargest(10).reset_index()
             fig_fuel_products = px.pie(fuel_sales, names="Nazwa produktu", values="Ilość",
-                                       title="Udział produktów paliwowych")
+                                    title="TOP 10 produktów paliwowych", hole=0.4)
 
+            # Dni wolne
             try:
-                start_dt = pd.to_datetime(dff["Okres"].min())
-                end_dt = pd.to_datetime(dff["Okres"].max())
+                start_dt = pd.to_datetime(fuel_df["Okres"].min())
+                end_dt = pd.to_datetime(fuel_df["Okres"].max())
                 free_days = get_free_days(start_dt, end_dt)
                 for day in free_days:
                     fig_fuel_sales.add_vline(x=day, line_dash="dot", line_color="gray", opacity=0.2)
@@ -711,6 +732,8 @@ def create_dash(flask_app):
                     dbc.Col(dcc.Graph(className="custom-graph", figure=fig_fuel_products), width=6)
                 ])
             ])
+
+
 
 
         elif tab == 'tab4':
