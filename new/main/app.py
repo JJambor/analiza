@@ -65,6 +65,10 @@ def create_dash(flask_app):
     # ---------------------------------------------
     hois_map = load_hois_map()
     df = load_data()
+    global df_cached, hois_cached
+    df_cached = df.copy()
+    hois_cached = hois_map.copy()
+
 
     # Mapowanie dodatkowych kolumn
     df["Grupa towarowa"] = df["HOIS"].map(lambda x: hois_map.get(x, ("Nieznana", "Nieznana"))[0])
@@ -90,95 +94,99 @@ def create_dash(flask_app):
     # Mock session state for favorites
     app.server.config['FAVORITES'] = set()
 
-    app.layout = dbc.Container(children=[
-        dbc.Row(children=[
-            # FILTRY
-            dbc.Col(id="filter-column", children=[
-                dbc.Button(
-                    "Pokaż / Ukryj filtry", id="toggle-filter-button",
-                    color="primary", className="mb-3", n_clicks=0
-                ),
-                html.Div(id="filter-panel", children=[
-                    dbc.Card(
-                        dbc.CardBody([
+    app.layout = dbc.Container([
+    # Przycisk u góry
+    dbc.Button(
+        "Pokaż / Ukryj filtry", id="toggle-filter-button",
+        color="primary", className="mb-3", n_clicks=0
+    ),
+
+    # Kontener z filtrem i contentem
+    html.Div([
+        # Filtry (będące DIVem, nie dbc.Col)
+        html.Div(id="filter-column", children=[
+            html.Div(id="filter-panel", children=[
+                dbc.Card(
+                    dbc.CardBody([
+                        html.Div([
+                            html.H4("Filtry", className="card-title mb-4"),
+
                             html.Div([
-                                html.H4("Filtry", className="card-title mb-4"),
-
-                                html.Div([
-                                    html.Label("Zakres dat", className="form-label"),
-                                    dcc.DatePickerRange(
-                                        id='date-picker',
-                                        min_date_allowed=min_date,
-                                        max_date_allowed=max_date,
-                                        start_date=min_date,
-                                        end_date=max_date,
-                                        display_format='YYYY-MM-DD',
-                                        className="form-control"
-                                    )
-                                ], className="mb-4"),
-
-                                html.Div([
-                                    html.Label("Stacje:", className="form-label"),
-                                    html.Div([
-                                        dbc.Button("Zaznacz wszystkie", id='select-all-stations', size="sm",
-                                                   color="primary", className="me-2", n_clicks=0),
-                                        dbc.Button("Odznacz wszystkie", id='deselect-all-stations', size="sm",
-                                                   color="secondary", n_clicks=0),
-                                    ], className="mb-2"),
-                                    dcc.Dropdown(
-                                        id='station-dropdown',
-                                        options=[{'label': s, 'value': s} for s in station_options],
-                                        value=station_options,
-                                        multi=True,
-                                        className="form-control"
-                                    )
-                                ], className="mb-4"),
-
-                                html.Div([
-                                    html.Label("Grupy towarowe:", className="form-label"),
-                                    html.Div([
-                                        dbc.Button("Zaznacz wszystkie", id='select-all-groups', size="sm",
-                                                   color="primary", className="me-2", n_clicks=0),
-                                        dbc.Button("Odznacz wszystkie", id='deselect-all-groups', size="sm",
-                                                   color="secondary", n_clicks=0),
-                                    ], className="mb-2"),
-                                    dcc.Dropdown(
-                                        id='group-dropdown',
-                                        options=[{'label': g, 'value': g} for g in group_options],
-                                        value=group_options,
-                                        multi=True,
-                                        className="form-control"
-                                    )
-                                ], className="mb-4"),
-
-                                dcc.Checklist(
-                                    id='monthly-check',
-                                    options=[{'label': 'Widok miesięczny według stacji', 'value': 'monthly'}],
-                                    value=[],
-                                    className="form-check"
+                                html.Label("Zakres dat", className="form-label"),
+                                dcc.DatePickerRange(
+                                    id='date-picker',
+                                    min_date_allowed=min_date,
+                                    max_date_allowed=max_date,
+                                    start_date=min_date,
+                                    end_date=max_date,
+                                    display_format='YYYY-MM-DD',
+                                    className="form-control"
                                 )
-                            ], className="filter-form")
-                        ]),
-                        className="custom-card"
-                    )
-                ])
-            ], width=3),
+                            ], className="mb-4"),
 
-            dbc.Col(id="content-column",children=[
-                dcc.Tabs(id='tabs', value='tab1', children=[
-                    dcc.Tab(label='Ogólny', value='tab1'),
-                    dcc.Tab(label='Sklep', value='tab2'),
-                    dcc.Tab(label='Paliwo', value='tab3'),
-                    dcc.Tab(label='Lojalność', value='tab4'),
-                    dcc.Tab(label='Myjnia', value='tab5'),
-                    dcc.Tab(label='Ulubione', value='tab6'),
-                    dcc.Tab(label='Sprzedaż per kasjer', value='tab7')
-                ]),
+                            html.Div([
+                                html.Label("Stacje:", className="form-label"),
+                                html.Div([
+                                    dbc.Button("Zaznacz wszystkie", id='select-all-stations', size="sm",
+                                               color="primary", className="me-2", n_clicks=0),
+                                    dbc.Button("Odznacz wszystkie", id='deselect-all-stations', size="sm",
+                                               color="secondary", n_clicks=0),
+                                ], className="mb-2"),
+                                dcc.Dropdown(
+                                    id='station-dropdown',
+                                    options=[{'label': s, 'value': s} for s in station_options],
+                                    value=station_options,
+                                    multi=True,
+                                    className="form-control"
+                                )
+                            ], className="mb-4"),
 
-                html.Div(id='tabs-content', style={'marginTop': '20px'})
-            ], width=9)
-        ])
-    ], className="main-container", fluid=True)
+                            html.Div([
+                                html.Label("Grupy towarowe:", className="form-label"),
+                                html.Div([
+                                    dbc.Button("Zaznacz wszystkie", id='select-all-groups', size="sm",
+                                               color="primary", className="me-2", n_clicks=0),
+                                    dbc.Button("Odznacz wszystkie", id='deselect-all-groups', size="sm",
+                                               color="secondary", n_clicks=0),
+                                ], className="mb-2"),
+                                dcc.Dropdown(
+                                    id='group-dropdown',
+                                    options=[{'label': g, 'value': g} for g in group_options],
+                                    value=group_options,
+                                    multi=True,
+                                    className="form-control"
+                                )
+                            ], className="mb-4"),
+
+                            dcc.Checklist(
+                                id='monthly-check',
+                                options=[{'label': 'Widok miesięczny według stacji', 'value': 'monthly'}],
+                                value=[],
+                                className="form-check"
+                            )
+                        ], className="filter-form")
+                    ]),
+                    className="custom-card"
+                )
+            ])
+        ], className="responsive-filter"),
+
+        # Główna zawartość
+        html.Div(id="content-column", children=[
+            dcc.Tabs(id='tabs', value='tab1', children=[
+                dcc.Tab(label='Ogólny', value='tab1'),
+                dcc.Tab(label='Sklep', value='tab2'),
+                dcc.Tab(label='Paliwo', value='tab3'),
+                dcc.Tab(label='Lojalność', value='tab4'),
+                dcc.Tab(label='Myjnia', value='tab5'),
+                dcc.Tab(label='Ulubione', value='tab6'),
+                dcc.Tab(label='Sprzedaż per kasjer', value='tab7')
+            ]),
+            html.Div(id='tabs-content', style={'marginTop': '20px'})
+        ], className="responsive-content")
+    ], className="dashboard-layout")
+], className="main-container", fluid=True)
+
     # ---------------------------------------------
     # Callback dla przycisków stacji
     # ---------------------------------------------
@@ -535,99 +543,107 @@ def create_dash(flask_app):
 
             return html.Div(content)
 
+            
         if tab == 'tab3':
-
             fuel_df = dff[dff["Grupa sklepowa"] == "PALIWO"]
 
             if fuel_df.empty:
                 return html.Div(children=[
-
                     html.H3("Sprzedaż paliwa"),
-
                     html.P("Brak danych paliwowych dla wybranych filtrów.")
-
                 ])
 
             # METRYKI
-
             fuel_liters = fuel_df["Ilość"].sum()
-
             fuel_tx = fuel_df["#"].nunique()
-
             avg_liters_per_tx = fuel_liters / fuel_tx if fuel_tx != 0 else 0
 
             metrics = html.Div(className="metric-container", children=[
-
                 generate_metric_card("Ilość litrów", f"{fuel_liters:,.0f} l", None),
-
                 generate_metric_card("Liczba transakcji paliwowych", f"{fuel_tx:,}", None),
-
                 generate_metric_card("Śr. litry / transakcja", f"{avg_liters_per_tx:.2f} l", None),
-
             ])
 
-            fuel_sales_grouped = fuel_df.groupby(["Okres"] + ([category_col] if category_col else []))[
-
-                "Ilość"].sum().reset_index()
-
+            fuel_sales_grouped = fuel_df.groupby(["Okres"] + ([category_col] if category_col else []))["Ilość"].sum().reset_index()
             fig_fuel_sales = px.line(fuel_sales_grouped, x="Okres", y="Ilość", color=category_col,
-
                                      title="Sprzedaż paliw", markers=True)
 
+            # WYKRES FLOTOWY
+            non_b2b_invoice = fuel_df[(fuel_df["B2B"] != "TAK") & (fuel_df["Dokument"].str.upper() == "FAKTURA")]
+            non_b2b_invoice_count = len(non_b2b_invoice)
+            total_transactions = len(fuel_df)
+
+            flota_data = pd.DataFrame({
+                "Typ": ["Potencjalni klienci flotowi", "Pozostali klienci"],
+                "Liczba": [non_b2b_invoice_count, total_transactions - non_b2b_invoice_count]
+            })
+
+            fig_flota = px.pie(
+                flota_data,
+                names="Typ",
+                values="Liczba",
+                title="Potencjał do założenia karty flotowej",
+                hole=0.4
+            )
+            fig_flota.update_traces(textposition='inside', textinfo='percent+label')
+
+            # WYKRES: paliwo + sklep vs tylko paliwo (na podstawie DFF)
+            tx_analysis = dff.groupby("#")["HOIS"].apply(lambda x: (x == 0).all()).reset_index(name="Tylko paliwo")
+            tx_summary = tx_analysis["Tylko paliwo"].value_counts().rename(index={True: "Tylko paliwo", False: "Paliwo + sklep"})
+            tx_df = tx_summary.reset_index()
+            tx_df.columns = ["Typ", "Liczba"]
+
+            fig_mix = px.pie(
+                tx_df,
+                names="Typ",
+                values="Liczba",
+                title="Transakcje paliwowe: tylko paliwo vs paliwo + sklep",
+                hole=0.4
+            )
+            fig_mix.update_traces(textposition='inside', textinfo='percent+label')
+
+            # B2B / B2C
             fuel_df["Typ klienta"] = fuel_df["B2B"].apply(lambda x: "B2B" if str(x).upper() == "TAK" else "B2C")
-
             customer_types = fuel_df.groupby("Typ klienta")["Ilość"].sum().reset_index()
-
             fig_customer_types = px.pie(customer_types, values="Ilość", names="Typ klienta",
-
                                         title="Stosunek tankowań B2C do B2B", hole=0.4)
-
             fig_customer_types.update_traces(textposition='inside', textinfo='percent+label')
 
+            # Udział produktów paliwowych
             fuel_sales = fuel_df.groupby("Nazwa produktu")["Ilość"].sum().reset_index()
-
             fig_fuel_products = px.pie(fuel_sales, names="Nazwa produktu", values="Ilość",
-
                                        title="Udział produktów paliwowych")
 
             try:
-
                 start_dt = pd.to_datetime(dff["Okres"].min())
-
                 end_dt = pd.to_datetime(dff["Okres"].max())
-
                 free_days = get_free_days(start_dt, end_dt)
-
                 for day in free_days:
                     fig_fuel_sales.add_vline(x=day, line_dash="dot", line_color="gray", opacity=0.2)
-
             except Exception as e:
-
                 print("Błąd przy dodawaniu dni wolnych: ", e)
 
             return html.Div(children=[
-
                 html.H3("Paliwo"),
-
                 metrics,
 
                 html.H4("Sprzedaż paliw"),
-
-                dbc.Row(children=[
-
+                dbc.Row([
                     dbc.Col(dcc.Graph(className="custom-graph", figure=fig_fuel_sales), width=12)
-
                 ]),
 
-                dbc.Row(children=[
+                html.H4("Potencjał flotowy i zakupy sklepu"),
+                dbc.Row([
+                    dbc.Col(dcc.Graph(className="custom-graph", figure=fig_flota), width=6),
+                    dbc.Col(dcc.Graph(className="custom-graph", figure=fig_mix), width=6)
+                ]),
 
+                dbc.Row([
                     dbc.Col(dcc.Graph(className="custom-graph", figure=fig_customer_types), width=6),
-
                     dbc.Col(dcc.Graph(className="custom-graph", figure=fig_fuel_products), width=6)
-
                 ])
-
             ])
+
 
         elif tab == 'tab4':
             start_date_current = pd.to_datetime(start_date)
@@ -1021,69 +1037,14 @@ def create_dash(flask_app):
                 "Ilość": "sum"
             }).reset_index()
             kasjer_summary.columns = ["Kasjer", "Liczba transakcji", "Obrót netto", "Suma sztuk"]
-            kasjer_summary["Średnia wartość transakcji"] = kasjer_summary["Obrót netto"] / kasjer_summary[
-                "Liczba transakcji"]
+            kasjer_summary["Średnia wartość transakcji"] = kasjer_summary["Obrót netto"] / kasjer_summary["Liczba transakcji"]
             kasjer_summary = kasjer_summary.sort_values("Obrót netto", ascending=False)
 
             top10 = kasjer_summary.head(10)
             fig_kasjer = px.bar(top10, x="Kasjer", y="Obrót netto", title="TOP 10 kasjerów wg obrotu netto")
             fig_trans = px.bar(top10, x="Kasjer", y="Liczba transakcji", title="TOP 10 kasjerów wg liczby transakcji")
             fig_avg = px.bar(top10, x="Kasjer", y="Średnia wartość transakcji",
-                             title="TOP 10 kasjerów wg średniej wartości transakcji")
-
-            try:
-                top_products_df = pd.read_csv("top_products.csv", sep=";")
-                top_products_df["MIESIĄC"] = top_products_df["MIESIĄC"].astype(str)
-                top_products_df["PLU"] = top_products_df["PLU"].astype(str)
-
-                dff["Miesiąc"] = pd.to_datetime(dff["Data"]).dt.to_period("M").astype(str)
-                dff["PLU"] = dff["PLU"].astype(str)
-
-                dostepne_miesiace = sorted(top_products_df["MIESIĄC"].unique())
-                wybrany_miesiac = dostepne_miesiace[-1]
-
-                top_plu_list = top_products_df[top_products_df["MIESIĄC"] == wybrany_miesiac]["PLU"].tolist()
-                nazwy_plu = top_products_df.set_index("PLU")["NAZWA"].to_dict()
-
-                df_top = dff[
-                    (dff["Miesiąc"] == wybrany_miesiac) &
-                    (dff["PLU"].isin(top_plu_list))
-                    ].copy()
-
-                if not df_top.empty:
-                    df_top["Kasjer"] = df_top["Stacja"].astype(str) + " - " + df_top["Login POS"].astype(str)
-                    df_top["PLU_nazwa"] = df_top["PLU"].map(nazwy_plu)
-                    sztuki_df = df_top.groupby(["Kasjer", "PLU_nazwa"])["Ilość"].sum().reset_index()
-
-                    fig_top1 = px.bar(
-                        sztuki_df,
-                        x="Kasjer",
-                        y="Ilość",
-                        color="PLU_nazwa",
-                        title=f"Sprzedaż sztukowa top produktów per kasjer ({wybrany_miesiac})",
-                        text_auto=".2s"
-                    )
-
-                    transakcje_df = df_top.groupby("Kasjer")["#"].nunique().reset_index().rename(
-                        columns={"#": "Transakcje"})
-                    sztuki_df = sztuki_df.merge(transakcje_df, on="Kasjer", how="left")
-                    sztuki_df["Sztuki na transakcję"] = sztuki_df["Ilość"] / sztuki_df["Transakcje"]
-
-                    fig_top2 = px.bar(
-                        sztuki_df,
-                        x="Kasjer",
-                        y="Sztuki na transakcję",
-                        color="PLU_nazwa",
-                        title=f"Średnia liczba sprzedanych top produktów na transakcję ({wybrany_miesiac})",
-                        text_auto=".2f"
-                    )
-                else:
-                    fig_top1 = None
-                    fig_top2 = None
-            except Exception as e:
-                print(f"Błąd przy wczytywaniu top produktów: {e}")
-                fig_top1 = None
-                fig_top2 = None
+                            title="TOP 10 kasjerów wg średniej wartości transakcji")
 
             df_loyal = dff[dff["Karta lojalnościowa"].str.upper() == "TAK"].copy()
             df_all = dff.copy()
@@ -1106,7 +1067,7 @@ def create_dash(flask_app):
                 text_auto=".1f"
             )
             fig_penetracja.update_layout(yaxis_title="%", xaxis_title="Kasjer")
-
+            # Sekcja layout
             content = [
                 html.H3("Sprzedaż per kasjer"),
                 html.Div([
@@ -1143,21 +1104,128 @@ def create_dash(flask_app):
                         ], width=12)
                     ], className="loyalty-table-container")
                 ]),
-                dcc.Graph(className="custom-graph",figure=fig_kasjer),
-                dcc.Graph(className="custom-graph",figure=fig_trans),
-                dcc.Graph(className="custom-graph",figure=fig_avg),
+                dcc.Graph(className="custom-graph", figure=fig_kasjer),
+                dcc.Graph(className="custom-graph", figure=fig_trans),
+                dcc.Graph(className="custom-graph", figure=fig_avg),
                 html.H4("Penetracja lojalnościowa per kasjer"),
-                dcc.Graph(className="custom-graph",figure=fig_penetracja)
+                dcc.Graph(className="custom-graph", figure=fig_penetracja),
             ]
+            # Dropdown + placeholder pod dynamiczne wykresy top produktów
+            try:
+                top_products_df = pd.read_csv("top_products.csv", sep=";")
+                top_products_df["MIESIĄC"] = top_products_df["MIESIĄC"].astype(str)
 
-            if fig_top1 and fig_top2:
+                dropdown_top_month = dcc.Dropdown(
+                    id="top-month-dropdown",
+                    options=[{"label": m, "value": m} for m in sorted(top_products_df["MIESIĄC"].unique())],
+                    value=sorted(top_products_df["MIESIĄC"].unique())[-1],
+                    clearable=False,
+                    className="mb-4"
+                )
+
                 content.extend([
                     html.H4("Analiza top produktów per kasjer"),
-                    dcc.Graph(className="custom-graph",figure=fig_top1),
-                    dcc.Graph(className="custom-graph",figure=fig_top2)
+                    html.Div([
+                        html.Label("Wybierz miesiąc:"),
+                        dropdown_top_month
+                    ]),
+                    dcc.Graph(id="top-products-graph", className="custom-graph"),
+                    dcc.Graph(id="top-products-per-tx-graph", className="custom-graph")
                 ])
+            except Exception as e:
+                print(f"Błąd przy wczytywaniu dropdowna miesiąca: {e}")
 
             return html.Div(content)
+        #CALLBACK DO DROPDOWN TOP PRODUKTY
+    @app.callback(
+        Output("top-products-graph", "figure"),
+        Output("top-products-per-tx-graph", "figure"),
+        Input("top-month-dropdown", "value"),
+        State('date-picker', 'start_date'),
+        State('date-picker', 'end_date'),
+        State('station-dropdown', 'value'),
+        State('group-dropdown', 'value')
+    )
+    def update_top_products_graphs(selected_month, start_date, end_date, selected_stations, selected_groups):
+        try:
+            # Szybko: użycie cache zamiast ponownego wczytywania
+            df_all = df_cached.copy()
+            hois_map = hois_cached.copy()
+
+            df_all["Grupa towarowa"] = df_all["HOIS"].map(lambda x: hois_map.get(x, ("Nieznana", "Nieznana"))[0])
+            df_all["Data"] = pd.to_datetime(df_all["Data"])
+            df_all = df_all[df_all["Login POS"] != 99999]
+
+            # Filtrowanie na podstawie zakresu dat, stacji i grup
+            df_filtered = df_all[
+                (df_all["Data"] >= pd.to_datetime(start_date)) &
+                (df_all["Data"] <= pd.to_datetime(end_date)) &
+                (df_all["Stacja"].isin(selected_stations)) &
+                (df_all["Grupa towarowa"].isin(selected_groups))
+            ].copy()
+
+            # Przygotowanie danych
+            df_filtered["Kasjer"] = df_filtered["Stacja"].astype(str) + " - " + df_filtered["Login POS"].astype(str)
+            df_filtered["Miesiąc"] = df_filtered["Data"].dt.to_period("M").astype(str)
+            df_filtered["PLU"] = df_filtered["PLU"].astype(str).str.strip()
+
+            # Top produkty z pliku CSV
+            top_products_df = pd.read_csv("top_products.csv", sep=";")
+            top_products_df["MIESIĄC"] = top_products_df["MIESIĄC"].astype(str)
+            top_products_df["PLU"] = top_products_df["PLU"].astype(str).str.strip()
+            nazwy_plu = top_products_df.set_index("PLU")["NAZWA"].to_dict()
+
+            top_plu_list = top_products_df[top_products_df["MIESIĄC"] == selected_month]["PLU"].tolist()
+
+            # Filtrowanie danych sprzedażowych do top PLU i wybranego miesiąca
+            df_top = df_filtered[
+                (df_filtered["Miesiąc"] == selected_month) &
+                (df_filtered["PLU"].isin(top_plu_list))
+            ].copy()
+
+            if df_top.empty:
+                return go.Figure(), go.Figure()
+
+            df_top["PLU_nazwa"] = df_top["PLU"].map(nazwy_plu)
+
+            # ➕ Ograniczenie do top 20 kasjerów (by uniknąć lagów)
+            top_kasjerzy = df_top.groupby("Kasjer")["Ilość"].sum().nlargest(20).index.tolist()
+            df_top = df_top[df_top["Kasjer"].isin(top_kasjerzy)]
+
+            # Wykres 1: liczba sprzedanych sztuk per kasjer i produkt
+            sztuki_df = df_top.groupby(["Kasjer", "PLU_nazwa"])["Ilość"].sum().reset_index()
+
+            fig1 = px.bar(
+                sztuki_df,
+                x="Kasjer",
+                y="Ilość",
+                color="PLU_nazwa",
+                title=f"Sprzedaż sztukowa top produktów ({selected_month})",
+                text_auto=".2s"
+            )
+            fig1.update_layout(barmode="stack", xaxis_tickangle=-45)
+
+            # Wykres 2: średnia liczba sztuk na transakcję
+            transakcje_df = df_top.groupby("Kasjer")["#"].nunique().reset_index().rename(columns={"#": "Transakcje"})
+            sztuki_df = sztuki_df.merge(transakcje_df, on="Kasjer", how="left")
+            sztuki_df["Sztuki na transakcję"] = sztuki_df["Ilość"] / sztuki_df["Transakcje"]
+
+            fig2 = px.bar(
+                sztuki_df,
+                x="Kasjer",
+                y="Sztuki na transakcję",
+                color="PLU_nazwa",
+                title=f"Średnia liczba sprzedanych top produktów na transakcję ({selected_month})",
+                text_auto=".2f"
+            )
+            fig2.update_layout(barmode="stack", xaxis_tickangle=-45)
+
+            return fig1, fig2
+
+        except Exception as e:
+            print(f"Błąd w callbacku top produktów: {e}")
+            return go.Figure(), go.Figure()
+
 
     # ---------------------------------------------
     # Callback dla heatmapy
@@ -1254,16 +1322,22 @@ def create_dash(flask_app):
         return render_tab_content('tab6', start_date, end_date, selected_stations, selected_groups, monthly_check)
 
     @app.callback(
-        Output("filter-panel", "className"),
-        Output("filter-column", "width"),
-        Output("content-column", "width"),
-        Input("toggle-filter-button", "n_clicks"),
-        State("filter-panel", "className"),
-        prevent_initial_call=True
-    )
-    def toggle_filter_visibility(n_clicks, current_class):
+    Output("filter-panel", "className"),
+    Output("filter-column", "className"),
+    Output("content-column", "className"),
+    Input("toggle-filter-button", "n_clicks"),
+    State("filter-panel", "className"),
+    prevent_initial_call=True
+)
+    def toggle_filter(n_clicks, current_class):
         is_hidden = "hidden" in (current_class or "")
-        new_class = "" if is_hidden else "hidden"
-        return new_class, (3 if is_hidden else 0), (9 if is_hidden else 12)
+        panel_class = "" if is_hidden else "hidden"
+        filter_col_class = "responsive-filter" if is_hidden else "responsive-filter hidden"
+        content_col_class = "responsive-content" if is_hidden else "responsive-content expanded"
+        return panel_class, filter_col_class, content_col_class
+
+
+
+
 
     return app
