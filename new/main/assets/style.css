@@ -397,49 +397,64 @@ select:valid,
 .dash-table-container .dash-spreadsheet-container .dash-table {
     border: none;
 }
+.fully-hidden {
+    display: none !important;
+}
+.dashboard-layout {
+    display: flex;
+    flex-direction: row;
+}
+
+.responsive-filter {
+    width: 25%;
+    padding-right: 20px;
+    transition: all 0.3s ease;
+}
+
+.responsive-content {
+    width: 75%;
+    transition: all 0.3s ease;
+}
+
+/* Po ukryciu filtrów */
+#filter-panel.hidden + .responsive-content,
+.responsive-filter.hidden {
+    display: none !important;
+}
+
+.responsive-content.expanded {
+    width: 100% !important;
+}
+
 
 
 /* ====== RESPONSYWNOŚĆ ====== */
 
-/* Duże ekrany – np. laptopy, duże tablety */
-@media (max-width: 1200px) {
-    .metric-container {
-        gap: 16px;
-    }
-
-    .metric-card {
-        flex: 1 1 45%;
-    }
-
-    .custom-card,
-    .custom-graph {
-        margin-bottom: 24px;
-    }
-}
-
-/* Średnie ekrany – tablety */
-@media (max-width: 992px) {
+@media screen and (max-width: 768px) {
     .main-container {
-        padding: 20px;
+        padding: 15px;
     }
 
     .metric-container {
         flex-direction: column;
-        gap: 20px;
+        gap: 15px;
     }
 
     .metric-card {
-        flex: 1 1 100%;
+        width: 100%;
         height: auto;
     }
 
     .custom-card,
-    .custom-graph {
-        padding: 16px;
+    .custom-graph,
+    .filter-form {
+        padding: 15px;
+        margin-bottom: 20px;
     }
 
-    .card-title {
-        font-size: 18px;
+    .tab {
+        font-size: 13px;
+        padding: 6px 10px;
     }
 
     .btn-primary,
@@ -447,113 +462,59 @@ select:valid,
         width: 100%;
         margin-bottom: 10px;
     }
-}
-
-/* Małe ekrany – telefony */
-@media (max-width: 768px) {
-    .main-container {
-        padding: 16px;
-    }
-
-    .card-title {
-        font-size: 16px;
-        margin-bottom: 12px;
-    }
-
-    .filter-form label {
-        font-size: 13px;
-    }
-
-    .metric-card {
-        padding: 16px;
-    }
-
-    .metric-value {
-        font-size: 20px;
-    }
-
-    .metric-delta {
-        font-size: 13px;
-    }
-
-    .loyalty-table-title {
-        font-size: 15px;
-    }
-
-    .loyalty-datatable {
-        font-size: 13px;
-    }
-
-    .datepicker-wrapper i.fa-calendar {
-        right: 8px;
-    }
-
-    .filter-toggle {
-        font-size: 14px;
-    }
-
-    .form-control,
-    .Select__control {
-        font-size: 13px !important;
-    }
-}
-/* ====== RESPONSYWNOŚĆ: PANEL FILTRÓW ====== */
-
-@media (max-width: 992px) {
-    .filter-form {
-        display: flex;
-        flex-direction: column;
-        gap: 16px;
-    }
-
-    .filter-form .form-control-wrapper,
-    .filter-form .form-check {
-        width: 100%;
-    }
-
-    .filter-form .form-check {
-        flex-direction: row;
-        justify-content: flex-start;
-        align-items: center;
-        gap: 10px;
-    }
-
-    .datepicker-wrapper {
-        width: 100%;
-    }
 
     .filter-toggle {
         font-size: 14px;
         padding: 8px 0;
     }
 
-    .btn-primary,
-    .btn-secondary {
-        width: 100%;
+    .loyalty-table-container {
+        overflow-x: auto;
+    }
+
+    .loyalty-datatable {
+        min-width: 600px;
+    }
+    
+}
+@media screen and (min-width: 1200px) {
+    .main-container {
+        padding: 30px;
+        background-color: #ffffff;
+    }
+    
+
+    .dash-bootstrap .row {
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+    }
+
+    .dash-bootstrap .col {
+        padding-left: 15px !important;
+        padding-right: 15px !important;
+    }
+}
+@media screen and (max-width: 768px) {
+    .dashboard-layout {
+        flex-direction: column;
+    }
+
+    .responsive-filter,
+    .responsive-content {
+        width: 100% !important;
+        padding-right: 0 !important;
+    }
+
+    .responsive-filter.hidden {
+        display: none !important;
+    }
+
+    .responsive-content.expanded {
+        width: 100% !important;
     }
 }
 
-@media (max-width: 768px) {
-    .filter-form {
-        gap: 12px;
-    }
 
-    .filter-form label,
-    .filter-form .form-label {
-        font-size: 13px;
-    }
 
-    .filter-form .form-control {
-        font-size: 13px;
-        padding: 6px 10px;
-    }
 
-    .datepicker-wrapper i.fa-calendar {
-        right: 8px;
-        font-size: 16px;
-    }
 
-    .filter-toggle {
-        font-size: 13px;
-    }
-}
