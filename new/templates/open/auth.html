@@ -3,7 +3,10 @@
 {% block title %}Logowanie{% endblock %}
 
 {% block content %}
+
 <div class="login-container">
+    <div class="triangle-grid"></div>
+    
     <div class="login-card">
         <h2>Logowanie do Kompas</h2>
         <form action="/auth/login" method="POST">
@@ -19,4 +22,5 @@
         </form>
     </div>
 </div>
+
 {% endblock %}
