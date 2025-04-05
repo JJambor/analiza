@@ -216,6 +216,7 @@ body {
 
 
 
+
 /* ====== DATAPICKER ====== */
 
 .datepicker-wrapper {
@@ -476,7 +477,9 @@ body {
 .dropdown-grupy div[class*="multi-value"] {
     background-color: #ffffff !important;
 }
-
+.dash-dropdown {
+    background-color: transparent !important;
+}
 
 
 /*CIEMNY MOTYW !!!*/
@@ -621,7 +624,7 @@ body.dark .tab:hover {
 body.dark .dashboard-layout,
 body.dark .responsive-filter,
 body.dark .responsive-content {
-    background-color: #121212;
+    background-color: #1e1e1e;
 }
 /* ====== CIEMNY MOTYW – metric cards ====== */
 body.dark .metric-card {
@@ -699,7 +702,96 @@ body.dark .dropdown-grupy .Select-value {
     color: #BFD7EA !important;
     border-color: #2c2c2c !important;
 }
+/* Główna ramka dropdowna */
+body.dark .dropdown-stacje .Select__control {
+    background-color: #2c2c2c !important;
+    border: 1px solid #444 !important;
+    border-radius: 8px !important;
+    box-shadow: none !important;
+}
 
+/* Kontener na wartości */
+body.dark .dropdown-stacje .Select__value-container {
+    background-color: #2c2c2c !important;
+    color: #BFD7EA !important;
+    border-radius: ;
+}
+
+/* Cały kontener dropdowna (zewnętrzny wrapper) */
+body.dark .dropdown-stacje {
+    background-color: #2c2c2c !important;
+    border-radius: 8px !important;
+    bi
+}
+
+/* === CIEMNY MOTYW: POPRAWKA WSZYSTKICH ELEMENTÓW DROPDOWNA === */
+
+body.dark .Select,
+body.dark .Select-control,
+body.dark .Select-menu,
+body.dark .Select-menu-outer,
+body.dark .Select-placeholder,
+body.dark .Select-value,
+body.dark .Select-value-label,
+body.dark .Select-clear-zone,
+body.dark .Select-arrow-zone,
+body.dark .Select-input,
+body.dark .Select-input > input {
+    background-color: #2c2c2c !important;
+    color: #BFD7EA !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+/* === CIEMNY MOTYW – dash datatable ogólnie === */
+body.dark .dash-table-container .dash-spreadsheet-container .dash-table {
+    background-color: #1e1e1e !important;
+    color: #f1f1f1 !important;
+    border: none !important;
+}
+
+/* Komórki */
+body.dark .dash-cell {
+    background-color: transparent !important;
+    color: #f1f1f1 !important;
+    opacity: 1 !important;
+}
+
+/* Nagłówki */
+body.dark .dash-header {
+    background-color: #2a2a2a !important;
+    color: #BFD7EA !important;
+    font-weight: 700 !important;
+    border-bottom: 2px solid #444 !important;
+}
+
+/* Kolor niebieskich wartości (jeśli chcesz je wyróżnić) */
+body.dark .dash-cell a {
+    color: #4dabf7 !important;
+    font-weight: 600;
+}
+
+/* Alternatywne tło dla wierszy (opcjonalnie) */
+body.dark .dash-row:nth-child(even) .dash-cell {
+    background-color: #1a1a1a !important;
+}
+
+
+/* Zaokrąglenie i wyrównanie ramki dropdowna */
+body.dark .Select-control {
+    border-radius: 8px !important;
+    border: 1px solid #444 !important;
+}
+
+/* Strzałka i przycisk '×' po prawej */
+body.dark .Select-clear-zone,
+body.dark .Select-arrow-zone {
+    color: #BFD7EA !important;
+}
+
+/* Input tekstowy wewnątrz (np. filtr) */
+body.dark .Select-input > input {
+    color: #BFD7EA !important;
+}
 
 
 /* ====== RESPONSYWNOŚĆ ====== */
