@@ -1,0 +1,23 @@
+{% extends 'secure/base.html' %}
+
+{% block title %}Arkusze danych{% endblock %}
+
+{% block content %}
+
+<div class="login-container">
+    <div class="triangle-grid"></div>
+
+    <div class="login-card">
+        <h2>Dodaj nowy arkusz</h2>
+        <form action="/admin/datasheets/add-sheet" method="POST"  enctype="multipart/form-data" >
+            <div class="form-group">
+                <label for="file">Wybierz plik:</label>
+                <input type="file" name="file" id="file" required>
+            </div>
+            <button type="submit">Zaloguj się</button>
+        </form>
+    </div>
+</div>
+
+{% endblock %}
+

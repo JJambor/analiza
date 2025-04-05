@@ -1,0 +1,10 @@
+{% extends 'secure/base.html' %}
+
+{% block title %}Lista użyszkodników{% endblock %}
+
+{% block content %}
+<div class="container">
+    <label for="link">Link dla użytkownika</label>
+    <input value="{{link}}" name="link" id="link" disabled="disabled">
+</div>
+{% endblock %}

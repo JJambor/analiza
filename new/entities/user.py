@@ -1,8 +1,8 @@
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
-from sqlalchemy import String, Integer, DateTime, func
+from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import String, Integer, DateTime, func, Boolean, Enum
 from datetime import datetime
 from flask_login import UserMixin
-
+from enums.user_role import UserRole
 from entities.baseentity import BaseEntity
 
 class User(BaseEntity, UserMixin):
@@ -20,13 +20,24 @@ class User(BaseEntity, UserMixin):
         server_default=func.now(),
         onupdate=func.now()
     )
-    def __init__(self, name = None, email = None, password = None, raw_password=None):
+    role: Mapped[UserRole] = mapped_column(Enum(UserRole), nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    def __init__(self, id = None, name = None, email = None, password = None, raw_password=None, is_active=False, role=None, role_value=None,created_at=None, updated_at=None):
         BaseEntity.__init__(self)
         UserMixin.__init__(self)
+        if id is not None:
+            self.id = id
+        if updated_at is not None:
+            self.updated_at = updated_at
+        if created_at is not None:
+            self.created_at = created_at
         self.name = name
         self.raw_password = raw_password
         self.email = email
         self.password = password
+        self.is_active = is_active
+
+        self.role = self.__set_role(role, role_value)
 
     def get_id(self):
         return str(self.id)
@@ -36,4 +47,13 @@ class User(BaseEntity, UserMixin):
             'id': self.id,
             'name': self.name,
             'email': self.email,
+            'role': self.role.value,
         }
+    def __set_role(self, role=None, role_value=None):
+        if role is not None:
+            return role
+        elif role_value is not None:
+            for enum_role in UserRole:
+                if enum_role.value == role_value:
+                    return enum_role
+        return UserRole.USER

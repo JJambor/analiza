@@ -1,0 +1,65 @@
+{% extends 'base.html' %}
+
+{% block title %}Arkusze danych{% endblock %}
+
+{% block content %}
+
+<div class="login-container">
+    <div class="triangle-grid"></div>
+
+    <div class="login-card">
+        <h2>Dodaj nowy arkusz</h2>
+        <form id="form" name="user-form" action="/users/new" method="POST">
+            <div class="form-group">
+                <label for="name">Imię:</label>
+                <input name="name" id="name" type="text" required>
+            </div>
+           <div class="form-group">
+                <label for="email">Email:</label>
+                <input name="email" id="email" type="email" required>
+            </div>
+            <div class="form-group">
+                <label for="password">Hasło:</label>
+                <input name="password" id="password" type="password" required>
+                <div class="form-group">
+                    <label for="rep-password">Powtórz hasło:</label>
+                    <input name="rep-password" id="rep-password" type="password" required>
+                </div>
+            </div>
+            <p id="pass-monit" style="display:none; color: red">Hasła się różnią.</p>
+            <p id="pass-monit-len" style="display:none; color: red">Hasła muszą mieć powyżej 5 znaków.</p>
+
+            <button type="submit">Zarejestruj się</button>
+        </form>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script type="text/javascript">
+    const form = document.getElementById('form');
+    const submit = document.getElementById('submit');
+    const password = document.getElementById('password');
+    const repPassword = document.getElementById('rep-password');
+    const passMonit = document.getElementById('pass-monit');
+    const passMonitLen = document.getElementById('pass-monit-len');
+    submit.addEventListener('click', (e) => {
+        e.preventDefault();
+            console.log("XXXX")
+
+        const val = password.value;
+        if (!val || val.length < 5) {
+            passMonitLen.style.display = 'block'
+        } else if(val !== repPassword.value) {
+            passMonit.style.display = 'block'
+            passMonitLen.style.display = 'none'
+        } else {
+            form.submit();
+        }
+    });
+
+</script>
+{% endblock %}
+
+

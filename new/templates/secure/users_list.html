@@ -1,0 +1,44 @@
+{% extends 'secure/base.html' %}
+
+{% block title %}Lista użyszkodników{% endblock %}
+
+{% block content %}
+<table>
+    <thead>
+    <tr>
+        <th>Data dodania</th>
+        <th>Data zmodyfikowania</th>
+        <th>Imię</th>
+        <th>E-mail</th>
+        <th>Rola</th>
+        <th>Aktywny</th>
+        <th>Akcja</th>
+    </tr>
+    </thead>
+    <tbody>
+    {% for row in users %}
+    <tr>
+        <td>{{row.created_at}}</td>
+        <td>{{row.updated_at}}</td>
+        <td>{{row.name}}</td>
+        <td>{{row.email}}</td>
+        <td>
+            {% if row.role.value == 'admin' %}
+            Administrator
+            {% elif row.role.value == 'super_admin' %}
+            Super Administrator
+            {% elif row.role.value == 'coordinator' %}
+            Koordynator
+            {% else %}
+            Użytkownik
+            {% endif %}
+
+        </td>
+        <td>{% if row.is_active %}Aktywny{% else %} Nieaktywny {% endif %}</td>
+        <td><a href="/admin/users/{{row.id}}">Akcje</a></td>
+    </tr>
+    {% endfor %}
+    </tbody>
+</table>
+
+{% endblock %}

@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Domyślny tytuł{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+<header>
+    <nav>
+        <h1>Kompas</h1>
+        <ul>
+            <li><a href="/">Strona główna</a></li>
+            <li><a href="/auth/login">Logowanie</a></li>
+        </ul>
+    </nav>
+
+</header>
+<div style="display:flex; height: 100vh;" class="container">
+    <aside style="width: 300px; height:100%; background-color: white;">
+
+        <div class="admin-list">
+            <ul>
+                <li><a href="/admin/datasheets/list"> Arkusze danych</a>
+                    <ul>
+                        <li><a href="/admin/datasheets/add-sheet">Dodaj nowy arkusz</a></li>
+                    </ul>
+                </li>
+                {% if current_user.role.value == 'coordinator' or current_user.role.value == 'super_admin' %}
+                <li>
+                    <a href="/admin/users">
+                        Użytkownicy
+                    </a>
+                    <ul>
+                        <li><a href="/admin/users/link">Nowy użytkownik</a></li>
+
+                    </ul>
+                </li>
+                {% endif %}
+
+            </ul>
+        </div>
+    </aside>
+    <main>
+        {% block content %}
+        {% endblock %}
+    </main>
+
+
+</div>
+
+
+<footer>
+    <p>&copy; 2025 Kompas</p>
+</footer>
+
+{% block scripts %}
+{% endblock %}
+</body>
+</html>

@@ -10,7 +10,7 @@ def create_auth_manager(app):
        @login_manager.user_loader
        def load_user(id):
            user = UsersService.get_user(id)
-           if user is None or user is False or not user.is_authenticated:
+           if user is None or user and user.is_active:
                return None
            return user
 def auth():

@@ -1,0 +1,23 @@
+{% extends 'secure/base.html' %}
+
+{% block title %}Arkusze danych{% endblock %}
+
+{% block content %}
+<table>
+    <thead>
+    <tr>
+        <th>Data dodania</th>
+        <th>Ścieżka</th>
+    </tr>
+    </thead>
+    <tbody>
+    {% for sheet in datasheets %}
+    <tr>
+        <td>{{sheet.created_at}}</td>
+        <td>{{sheet.path }}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+</table>
+
+{% endblock %}

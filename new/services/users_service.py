@@ -1,8 +1,16 @@
+from datetime import datetime
+
 import bcrypt
 from flask_login import login_user
+import uuid
 
+from entities.magiclink import Magiclink
 from repositories.users_repository import UsersRepository
 from repositories.redis_repository import RedisRepository
+from repositories.links_repository import LinksRepository
+from entities.user import User
+
+
 class UsersService:
 
     @staticmethod
@@ -30,13 +38,41 @@ class UsersService:
     def get_user(id):
         user = RedisRepository.get_cached_user(id)
         if (user is not None):
+            login_user(user)
             return user
+        UsersService.get_user_from_db(id)
+
+    @staticmethod
+    def get_user_from_db(id):
         user = UsersRepository.find_user_by_id(id)
         if user is None:
             return False
         else:
             return user
 
+    @staticmethod
+    def update_user(user_to_update):
+        user = UsersRepository.update_user(user_to_update)
+        return user
+    @staticmethod
+    def generate_link_for_new_user():
+        generated_uuid = uuid.uuid4()
+        uuid_string = str(generated_uuid)
+        magiclink = Magiclink(uuid_string)
+        link = LinksRepository.add_link(link=magiclink)
+        parsed_link = "https://kompas.website/users/new/" + link.link
+        return parsed_link
+
+    @staticmethod
+    def get_new_user_form(linkDto):
+        link = LinksRepository.find_link(linkDto, datetime.now())
+        return link
+    @staticmethod
+    def get_users():
+        usersArr = UsersRepository.get_users()
+        return [User(id=row.id, name=row.name, email=row.email,
+                               created_at=row.created_at, updated_at=row.updated_at,
+                               role=row.role, is_active=row.is_active) for row in usersArr]
     @staticmethod
     def __hash_password(raw_password):
         salt = bcrypt.gensalt()

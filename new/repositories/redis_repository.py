@@ -1,6 +1,10 @@
 import json
 from redis_client.redis_client import redis
 from entities.user import User
+
+from enums.user_role import UserRole
+
+
 class RedisRepository:
 
     @staticmethod
@@ -12,6 +16,6 @@ class RedisRepository:
         user_data = redis.get(f"user-{id}")
         if user_data is not None:
             user = json.loads(user_data)
-            user_entity = User(user['name'], user['email'])
+            user_entity = User(id=user['id'], name=user['name'], email=user['email'], role_value=user['role'], is_active=True)
             return user_entity
         return None

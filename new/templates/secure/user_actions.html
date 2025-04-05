@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+
+{% block title %}Arkusze danych{% endblock %}
+
+{% block content %}
+
+<div class="login-container">
+    <div class="triangle-grid"></div>
+
+    <div class="login-card">
+        <h2>Akcje</h2>
+        <form id="form" action="/admin/users/{{user.id}}" method="POST">
+            <div class="form-group">
+                <label for="id">Id:</label>
+                <input name="id" id="id" type="text" value="{{user.id}}" disabled required>
+            </div>
+            <div class="form-group">
+                <label for="name">Imię:</label>
+                <input name="name" id="name" type="text" value="{{user.name}}">
+            </div>
+            <div class="form-group">
+                <label for="email">Email:</label>
+                <input name="email" id="email" type="email" value="{{user.email}}">
+            </div>
+            <div class="form-group">
+                <label for="role">Rola:</label>
+                <select name="role" id="role">
+                    <option value="user" {% if user.role.value==
+                    'user' %} selected {% endif %}>Użytkownik</option>
+                    <option value="admin" {% if user.role.value==
+                    'admin' %} selected {% endif %}>Administrator</option>
+                    <option value="super_admin" {% if user.role.value==
+                    'super_admin' %} selected {% endif %}>Super Administrator</option>
+                    <option value="coordinator" {% if user.role.value==
+                    'coordinator' %} selected {% endif %}>Koordynator</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="is_active">Aktywny:</label>
+                <input name="is_active" id="is_active" type="checkbox" {% if user.is_active %} checked {% endif %}>
+            </div>
+
+            <button type="submit">Zarejestruj się</button>
+        </form>
+    </div>
+</div>
+
+{% endblock %}
