@@ -47,6 +47,35 @@ pio.templates["corporate_blue"]["layout"]["legend"] = {
 
 pio.templates.default = "corporate_blue"
 
+#Ciemny motyw
+corporate_dark_palette = [
+    "#74C0FC", "#2A9D8F", "#A8DADC", "#FFD166", "#EF476F", "#BFD7EA", "#F1FAFB"
+]
+
+pio.templates["corporate_dark"] = pio.templates["plotly_dark"]
+pio.templates["corporate_dark"]["layout"]["colorway"] = corporate_dark_palette
+pio.templates["corporate_dark"]["layout"]["font"] = {
+    "family": "Segoe UI, Open Sans, sans-serif",
+    "size": 15,
+    "color": "#f1f1f1"
+}
+pio.templates["corporate_dark"]["layout"]["title"] = {
+    "x": 0.05,
+    "xanchor": "left",
+    "font": {
+        "size": 20,
+        "color": "#74C0FC",
+        "family": "Segoe UI Semibold, sans-serif"
+    }
+}
+pio.templates["corporate_dark"]["layout"]["plot_bgcolor"] = "#1e1e1e"
+pio.templates["corporate_dark"]["layout"]["paper_bgcolor"] = "#1e1e1e"
+pio.templates["corporate_dark"]["layout"]["legend"] = {
+    "bgcolor": "rgba(0,0,0,0)",
+    "bordercolor": "#444",
+    "borderwidth": 1
+}
+
 
 # ---------------------------------------------
 # Funkcje pomocnicze
@@ -134,10 +163,19 @@ def create_dash(flask_app):
     app.server.config['FAVORITES'] = set()
 
     app.layout = dbc.Container([
-    dbc.Button(
-        "Pokaż / Ukryj filtry", id="toggle-filter-button",
-        color="primary", className="mb-3", n_clicks=0
+    dcc.Store(id='theme-store', data={'theme': 'light'}),
+
+    dbc.Row([
+    dbc.Col(
+        dbc.Button("Pokaż / Ukryj filtry", id="toggle-filter-button", color="primary", n_clicks=0),
+        width="auto"
     ),
+    dbc.Col(
+        dbc.Button("🌙", id="theme-toggle-button", color="primary", n_clicks=0, title="Zmień motyw"),
+        width="auto",
+        className="ms-auto text-end"
+    )
+], className="align-items-center mb-3"),
 
     html.Div([
         html.Div(id="filter-column", children=[
@@ -222,7 +260,7 @@ def create_dash(flask_app):
 
         html.Div(id="content-column", children=[
             dcc.Tabs(id='tabs', value='tab1', children=[
-                dcc.Tab(label='Ogólny', value='tab1'),
+                dcc.Tab(label='Ogólny', value='tab1',),
                 dcc.Tab(label='Sklep', value='tab2'),
                 dcc.Tab(label='Paliwo', value='tab3'),
                 dcc.Tab(label='Lojalność', value='tab4'),
@@ -292,10 +330,14 @@ def create_dash(flask_app):
         Input('station-dropdown', 'value'),
         Input('group-dropdown', 'value'),
         Input('monthly-check', 'value'),
-        Input('b2b-checklist', 'value')
+        Input('b2b-checklist', 'value'),
+        State('theme-store', 'data')
+        
 
     )
-    def render_tab_content(tab, start_date, end_date, selected_stations, selected_groups, monthly_check, selected_b2b):
+    def render_tab_content(tab, start_date, end_date, selected_stations, selected_groups, monthly_check, selected_b2b,theme_data):
+        theme = theme_data.get("theme", "light")
+        pio.templates.default = "corporate_dark" if theme == "dark" else "corporate_blue"
         start_date_obj = pd.to_datetime(start_date).date()
         end_date_obj = pd.to_datetime(end_date).date()
 
@@ -1235,9 +1277,12 @@ def create_dash(flask_app):
         State('date-picker', 'start_date'),
         State('date-picker', 'end_date'),
         State('station-dropdown', 'value'),
-        State('group-dropdown', 'value')
+        State('group-dropdown', 'value'),
+        State("theme-store", "data")
     )
-    def update_top_products_graphs(selected_month, start_date, end_date, selected_stations, selected_groups):
+    def update_top_products_graphs(selected_month, start_date, end_date, selected_stations, selected_groups, theme_data):
+        theme = theme_data.get("theme", "light")
+        pio.templates.default = "corporate_dark" if theme == "dark" else "corporate_blue"
         try:
             # Szybko: użycie cache zamiast ponownego wczytywania
             df_all = df_cached.copy()
@@ -1327,9 +1372,13 @@ def create_dash(flask_app):
         Input('date-picker', 'start_date'),
         Input('date-picker', 'end_date'),
         Input('station-dropdown', 'value'),
-        Input('group-dropdown', 'value')
+        Input('group-dropdown', 'value'),
+        State("theme-store", "data")
+        
     )
-    def update_heatmap(metric, start_date, end_date, selected_stations, selected_groups):
+    def update_heatmap(metric, start_date, end_date, selected_stations, selected_groups,theme_data):
+        theme = theme_data.get("theme", "light")
+        pio.templates.default = "corporate_dark" if theme == "dark" else "corporate_blue"
         start_date_obj = pd.to_datetime(start_date).date()
         end_date_obj = pd.to_datetime(end_date).date()
         dff = df[(df["Data"] >= start_date_obj) &
@@ -1426,6 +1475,39 @@ def create_dash(flask_app):
         filter_col_class = "responsive-filter" if is_hidden else "responsive-filter hidden"
         content_col_class = "responsive-content" if is_hidden else "responsive-content expanded"
         return panel_class, filter_col_class, content_col_class
+    #przełączanie trybu jasny/ciemny
+    @app.callback(
+    Output('theme-store', 'data'),
+    Input('theme-toggle-button', 'n_clicks'),
+    State('theme-store', 'data'),
+    prevent_initial_call=True
+)
+    def toggle_theme(n, current_theme):
+        new_theme = 'dark' if current_theme.get('theme') == 'light' else 'light'
+        return {'theme': new_theme}
+    
+    app.clientside_callback(
+    """
+    function(themeData) {
+        if (!themeData || !themeData.theme) return window.dash_clientside.no_update;
+
+        const theme = themeData.theme;
+        const body = document.body;
+
+        if (theme === 'dark') {
+            body.classList.add('dark');
+        } else {
+            body.classList.remove('dark');
+        }
+
+        return window.dash_clientside.no_update;
+    }
+    """,
+    Output("theme-toggle-button", "title"),  # cokolwiek, co nie powoduje przeładowania (fikcyjny output)
+    Input("theme-store", "data"),
+    prevent_initial_call=True
+)
+
 
 
 
