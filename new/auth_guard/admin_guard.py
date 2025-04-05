@@ -20,6 +20,6 @@ def admin_auth():
 
         for protected in routes:
             if request.path.startswith(protected):
-                if current_user is None or current_user is False or not current_user.is_authenticated and current_user.role != UserRole.ADMIN and current_user.role != UserRole.SUPER_ADMIN and current_user.role != UserRole.COORDINATOR:
+                if current_user is None or current_user is False and current_user.role != UserRole.ADMIN and current_user.role != UserRole.SUPER_ADMIN and current_user.role != UserRole.COORDINATOR or not current_user.is_authenticated:
                     return redirect('/dashboard')
     return check()

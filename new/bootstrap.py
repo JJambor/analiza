@@ -1,5 +1,6 @@
 from flask import Flask
 
+from auth_guard.super_admin_guard import super_admin_auth, create_super_admin_auth_manager
 from views.auth import auth_bp, auth_form_bp, new_user_bp, new_user_post_bp
 from views.home import home_bp
 from views.admin.admin import datasheet_bp, admin_root_bp, add_sheet_bp, get_add_sheet_bp, generate_link_bp, \
@@ -16,6 +17,7 @@ def get_app():
     app = Flask(__name__, template_folder='templates')
     app.before_request(auth)
     app.before_request(admin_auth)
+    app.before_request(super_admin_auth)
     load_config(app)
     create_redis_client(app)
     app.register_blueprint(admin_root_bp, url_prefix='/admin')
@@ -35,8 +37,8 @@ def get_app():
     app.secret_key = 'tajny-klucz-123'
     create_auth_manager(app)
     create_admin_auth_manager(app)
-
-    # create_dash(app)
+    create_super_admin_auth_manager(app)
+    create_dash(app)
 
     return app
 if __name__ == '__main__':
