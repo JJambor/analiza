@@ -12,6 +12,7 @@
         <th>E-mail</th>
         <th>Rola</th>
         <th>Aktywny</th>
+        <th>Zalogowany</th>
         <th>Akcja</th>
     </tr>
     </thead>
@@ -35,6 +36,8 @@
 
         </td>
         <td>{% if row.is_active %}Aktywny{% else %} Nieaktywny {% endif %}</td>
+        <td>{% if row.is_signed %}Zalogowany{% else %} Wylogowany {% endif %}</td>
+
         <td><a href="/admin/users/{{row.id}}">Akcje</a></td>
     </tr>
     {% endfor %}

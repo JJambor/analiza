@@ -1,7 +1,7 @@
 from flask import request, session, redirect, url_for
 from flask_login import LoginManager,current_user, login_manager
 from services.users_service import UsersService
-routes = ['/dashboard', '/admin']
+routes = ['/dashboard']
 # routes = []
 def create_auth_manager(app):
        login_manager = LoginManager()
@@ -10,7 +10,7 @@ def create_auth_manager(app):
        @login_manager.user_loader
        def load_user(id):
            user = UsersService.get_user(id)
-           if user is None or user and user.is_active:
+           if user is None or user or not user.is_active:
                return None
            return user
 def auth():

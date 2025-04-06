@@ -1,8 +1,11 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from dotenv import load_dotenv
+import os
 
+load_dotenv()
 engine = create_engine(
-    'mysql+pymysql://kompas:3x%40mplePassword@kompas-db:3306/kompas'
+   os.environ.get("DB_AUTH")
 )
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 

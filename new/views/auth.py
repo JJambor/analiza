@@ -1,6 +1,7 @@
 from flask import Blueprint
 from views.auth_controller import AuthController
 
+auth_logout_bp = Blueprint('logout', __name__)
 auth_bp = Blueprint('auth', __name__)
 auth_form_bp = Blueprint('auth_form', __name__)
 new_user_bp = Blueprint('new_user', __name__)
@@ -13,6 +14,9 @@ def login():
 def login_form():
     return AuthController.get_login_form()
 
+@auth_logout_bp.route("/logout", methods=['GET'])
+def logout():
+    return AuthController.logout()
 @new_user_bp.route('/new/<string:id>', methods=['GET'])
 def new_user(id):
     return AuthController.add_new_user(id)

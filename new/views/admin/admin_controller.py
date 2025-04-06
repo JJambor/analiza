@@ -47,9 +47,9 @@ class AdminController:
         if is_active_form == 'on':
             is_active = True
         user = User(
-            email=request.form.get('email'),
-            name=request.form.get('name'),
-            role_value=request.form.get('role'),
+            email=request.form.get('email').strip(),
+            name=request.form.get('name').strip(),
+            role_value=request.form.get('role').strip(),
             is_active=is_active,
             id=id)
         user = UsersService.update_user(user)

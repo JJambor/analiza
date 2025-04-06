@@ -60,7 +60,7 @@ class UsersRepository:
     def get_users():
         with contextlib.closing(next(get_db())) as db:
             try:
-                query = select(User.id,User.name,User.email,User.created_at,User.updated_at,User.role,User.is_active)
+                query = select(User.id,User.name,User.email,User.created_at,User.updated_at,User.role,User.is_active, User.is_signed)
                 return db.execute(query).all()
             except Exception as e:
                 raise e

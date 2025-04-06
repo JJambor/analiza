@@ -6,12 +6,13 @@ from entities.user import User
 def add_user_command(args):
     role = UserRole.USER
     if args.role is not None:
+        args_role = args.role.strip()
         for enum_role in UserRole:
-            if enum_role.value == args.role:
+            if enum_role.value == args_role:
                 role = enum_role
                 break
             role = UserRole.USER
-    user = User(name=args.name, raw_password=args.password, email=args.email, is_active=True, role=role)
+    user = User(name=args.name.strip(), raw_password=args.password.strip(), email=args.email.strip(), is_active=True, role=role)
     UsersService.register_user(user)
     print("User added")
 parser = argparse.ArgumentParser(description='Przykład przekazywania argumentów')
