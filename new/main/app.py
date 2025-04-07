@@ -135,6 +135,12 @@ def create_dash(flask_app):
     global df_cached, hois_cached
     df_cached = df.copy()
     hois_cached = hois_map.copy()
+    # Obliczenie pierwszego dnia poprzedniego miesiąca jako domyślny start_date
+    today = datetime.date.today()
+    first_day_this_month = today.replace(day=1)
+    last_month = first_day_this_month - datetime.timedelta(days=1)
+    first_day_last_month = last_month.replace(day=1)
+
 
 
     # Mapowanie dodatkowych kolumn
@@ -195,7 +201,7 @@ def create_dash(flask_app):
                                     id='date-picker',
                                     min_date_allowed=min_date,
                                     max_date_allowed=max_date,
-                                    start_date=min_date,
+                                    start_date=max(min_date, first_day_last_month),
                                     end_date=max_date,
                                     display_format='YYYY-MM-DD',
                                     className="form-control"
