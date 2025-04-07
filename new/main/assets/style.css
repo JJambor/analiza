@@ -9,6 +9,8 @@ body {
 .main-container {
     padding: 30px;
     background-color: #ffffff;
+    width: 100% !important;
+    max-width: 100% !important;
 }
 
 /* ====== KARTY I SEKCJE ====== */
@@ -288,13 +290,17 @@ body {
 
 #filter-panel {
     overflow: hidden;
-    transition: max-height 0.4s ease, opacity 0.3s ease;
-    max-height: 2000px;
+    transition: max-height 0.4s ease, padding 0.4s ease, opacity 0.4s ease;
+    max-height: 1000px;
     opacity: 1;
+    padding-top: 10px;
+    padding-bottom: 10px;
 }
 
 #filter-panel.hidden {
     max-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
     opacity: 0;
     pointer-events: none;
 }
@@ -406,6 +412,8 @@ body {
 .dashboard-layout {
     display: flex;
     flex-direction: row;
+    width: 100% !important;
+
 }
 
 .responsive-filter {
