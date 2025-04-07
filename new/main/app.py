@@ -9,8 +9,8 @@ import holidays
 import datetime
 import plotly.graph_objects as go
 corporate_blue_palette = [
-    "#0F4C81",  # Dark Navy Blue
-    "#2A9D8F",  # Soft Teal
+    "#0F4C81",  # Dark navy Blue
+    "#2A9D8F",  # Soft navy
     "#A8DADC",  # Light Aqua
     "#E9F5FB",  # Very Light Blue
     "#457B9D",  # Blue Steel
@@ -395,8 +395,8 @@ def create_dash(flask_app):
                 end_dt = pd.to_datetime(dff["Okres"].max())
                 free_days = get_free_days(start_dt, end_dt)
                 for day in free_days:
-                    fig_netto.add_vline(x=day, line_dash="dot", line_color="gray", opacity=0.2)
-                    fig_tx.add_vline(x=day, line_dash="dot", line_color="gray", opacity=0.2)
+                    fig_netto.add_vline(x=day, line_dash="dot", line_color="orange", opacity=0.2)
+                    fig_tx.add_vline(x=day, line_dash="dot", line_color="orange", opacity=0.2)
             except Exception as e:
                 print("Błąd przy dodawaniu dni wolnych: ", e)
 
@@ -488,9 +488,9 @@ def create_dash(flask_app):
                 free_days = get_free_days(start_dt, end_dt)
 
                 for day in free_days:
-                    fig_shop_netto.add_vline(x=day, line_dash="dot", line_color="gray", opacity=0.2)
+                    fig_shop_netto.add_vline(x=day, line_dash="dot", line_color="orange", opacity=0.2)
 
-                    fig_avg_tx.add_vline(x=day, line_dash="dot", line_color="gray", opacity=0.2)
+                    fig_avg_tx.add_vline(x=day, line_dash="dot", line_color="orange", opacity=0.2)
 
             except Exception as e:
 
@@ -545,7 +545,7 @@ def create_dash(flask_app):
                 try:
 
                     for day in free_days:
-                        fig_station_avg.add_vline(x=day, line_dash="dot", line_color="gray", opacity=0.2)
+                        fig_station_avg.add_vline(x=day, line_dash="dot", line_color="orange", opacity=0.2)
 
                 except:
 
@@ -699,6 +699,8 @@ def create_dash(flask_app):
                     html.H3("Sprzedaż paliwa"),
                     html.P("Brak danych paliwowych dla wybranych filtrów.")
                 ])
+            
+            
 
             # METRYKI
             fuel_liters = fuel_df["Ilość"].sum()
@@ -776,7 +778,7 @@ def create_dash(flask_app):
                 end_dt = pd.to_datetime(fuel_df["Okres"].max())
                 free_days = get_free_days(start_dt, end_dt)
                 for day in free_days:
-                    fig_fuel_sales.add_vline(x=day, line_dash="dot", line_color="gray", opacity=0.2)
+                    fig_fuel_sales.add_vline(x=day, line_dash="dot", line_color="orange", opacity=0.2)
             except Exception as e:
                 print("Błąd przy dodawaniu dni wolnych: ", e)
 
@@ -867,13 +869,13 @@ def create_dash(flask_app):
             fig_pen.update_traces(mode="lines+markers")
             fig_pen.update_layout(xaxis_tickformat="%d.%m")
             for day in free_days:
-                fig_pen.add_vline(x=day, line_dash="dot", line_color="gray", opacity=0.2)
+                fig_pen.add_vline(x=day, line_dash="dot", line_color="orange", opacity=0.2)
 
             fig_loyal = px.line(loyal_daily, x="Okres", y="Lojalnościowe", title="Transakcje lojalnościowe")
             fig_loyal.update_traces(mode="lines+markers")
             fig_loyal.update_layout(xaxis_tickformat="%d.%m")
             for day in free_days:
-                fig_loyal.add_vline(x=day, line_dash="dot", line_color="gray", opacity=0.2)
+                fig_loyal.add_vline(x=day, line_dash="dot", line_color="orange", opacity=0.2)
 
             df_both = pd.merge(loyal_daily, total_daily, on="Okres")
             df_both_melted = df_both.melt(id_vars=["Okres"], value_vars=["Lojalnościowe", "Wszystkie"],
@@ -891,7 +893,7 @@ def create_dash(flask_app):
             fig_combined.for_each_trace(
                 lambda trace: trace.update(yaxis="y2") if trace.name == "Lojalnościowe" else None)
             for day in free_days:
-                fig_combined.add_vline(x=day, line_dash="dot", line_color="gray", opacity=0.2)
+                fig_combined.add_vline(x=day, line_dash="dot", line_color="orange", opacity=0.2)
 
             df_loyal_top = dff[dff["Karta lojalnościowa"].str.upper() == "TAK"].copy()
             total_per_group = dff.groupby("Grupa towarowa")["#"].nunique().reset_index(name="Total")
@@ -1121,9 +1123,9 @@ def create_dash(flask_app):
                 free_days = get_free_days(start_dt, end_dt)
 
                 for day in free_days:
-                    fig_carwash.add_vline(x=day, line_dash="dot", line_color="gray", opacity=0.2)
+                    fig_carwash.add_vline(x=day, line_dash="dot", line_color="orange", opacity=0.2)
 
-                    fig_sales.add_vline(x=day, line_dash="dot", line_color="gray", opacity=0.2)
+                    fig_sales.add_vline(x=day, line_dash="dot", line_color="orange", opacity=0.2)
 
             except Exception as e:
 
