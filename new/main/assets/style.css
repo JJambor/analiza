@@ -509,7 +509,7 @@ body.dark .custom-graph {
 
 body.dark .main-container,
 body.dark .custom-card,
-body.dark .DateRangePickerInput,
+
 body.dark .DateInput_input,
 body.dark .form-control-wrapper,
 body.dark .dropdown-stacje .Select__multi-value,
@@ -519,6 +519,12 @@ body.dark .Select__menu {
     color: #f1f1f1 !important;
     border-color: #333 !important;
 }
+body.dark .DateRangePickerInput{
+    background-color: #2c2c2c !important;
+    color: #f1f1f1 !important;
+    border-color: #333 !important;
+}
+
 
 body.dark .card-title,
 body.dark .filter-form label,
@@ -795,7 +801,13 @@ body.dark .Select-clear-zone,
 body.dark .Select-arrow-zone {
     color: #BFD7EA !important;
 }
-
+body.dark .DateRangePickerInput_arrow svg {
+    fill: #A8DADC !important;  /* Jasny kolor dla strzałki */
+}
+/* Zmiana koloru strzałki przy najechaniu */
+body.dark .DateRangePickerInput_arrow svg:hover {
+    fill: #74C0FC !important;  /* Zmieniamy na złoty przy najechaniu */
+}
 /* Input tekstowy wewnątrz (np. filtr) */
 body.dark .Select-input > input {
     color: #BFD7EA !important;
