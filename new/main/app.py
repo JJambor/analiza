@@ -164,6 +164,10 @@ def create_dash(flask_app):
 
     app.layout = dbc.Container([
     dcc.Store(id='theme-store', data={'theme': 'light'}),
+    dcc.Store(id="trigger-graph-resize", data={"value": 0}),
+    dcc.Interval(id="theme-init", n_intervals=0, max_intervals=1, interval=200),
+
+
 
     dbc.Row([
     dbc.Col(
@@ -179,7 +183,7 @@ def create_dash(flask_app):
 
     html.Div([
         html.Div(id="filter-column", children=[
-            html.Div(id="filter-panel", children=[
+            html.Div(id="filter-panel",className="", children=[
                 dbc.Card(
                     dbc.CardBody([
                         html.Div([
@@ -271,7 +275,7 @@ def create_dash(flask_app):
             html.Div(id='tabs-content', style={'marginTop': '20px'})
         ], className="responsive-content")
     ], className="dashboard-layout")
-], className="main-container", fluid=True)
+], className="main-container", fluid=True, style={"width": "100%"})
 
 
 
@@ -331,7 +335,7 @@ def create_dash(flask_app):
         Input('group-dropdown', 'value'),
         Input('monthly-check', 'value'),
         Input('b2b-checklist', 'value'),
-        State('theme-store', 'data')
+        Input('theme-store', 'data')
         
 
     )
@@ -681,6 +685,9 @@ def create_dash(flask_app):
                 (df_all["Login POS"] != 99999)
             ].copy()
 
+    
+
+
             if fuel_df.empty:
                 return html.Div(children=[
                     html.H3("Sprzedaż paliwa"),
@@ -692,9 +699,22 @@ def create_dash(flask_app):
             fuel_tx = fuel_df["#"].nunique()
             avg_liters_per_tx = fuel_liters / fuel_tx if fuel_tx != 0 else 0
 
+            # Oblicz penetrację V-Power
+            vpower_keywords = ["V-POWER", "VPOWER"]
+            vpower_df = fuel_df[fuel_df["Nazwa produktu"].str.upper().str.contains("|".join(vpower_keywords))]
+            vpower_liters = vpower_df["Ilość"].sum()
+
+            # Odfiltruj AdBlue
+            non_adblue_df = fuel_df[~fuel_df["Nazwa produktu"].str.upper().str.contains("ADBLUE")]
+            non_adblue_liters = non_adblue_df["Ilość"].sum()
+
+            penetracja_vpower = (vpower_liters / non_adblue_liters * 100) if non_adblue_liters else 0
+
+
             metrics = html.Div(className="metric-container", children=[
                 generate_metric_card("Ilość litrów", f"{fuel_liters:,.0f} l"),
                 generate_metric_card("Liczba transakcji paliwowych", f"{fuel_tx:,}"),
+                generate_metric_card("Penetracja V-Power", f"{penetracja_vpower:.1f}%"),
                 generate_metric_card("Śr. litry / transakcja", f"{avg_liters_per_tx:.2f} l"),
             ])
 
@@ -1278,7 +1298,7 @@ def create_dash(flask_app):
         State('date-picker', 'end_date'),
         State('station-dropdown', 'value'),
         State('group-dropdown', 'value'),
-        State("theme-store", "data")
+        Input("theme-store", "data")
     )
     def update_top_products_graphs(selected_month, start_date, end_date, selected_stations, selected_groups, theme_data):
         theme = theme_data.get("theme", "light")
@@ -1373,7 +1393,7 @@ def create_dash(flask_app):
         Input('date-picker', 'end_date'),
         Input('station-dropdown', 'value'),
         Input('group-dropdown', 'value'),
-        State("theme-store", "data")
+        Input("theme-store", "data")
         
     )
     def update_heatmap(metric, start_date, end_date, selected_stations, selected_groups,theme_data):
@@ -1462,24 +1482,36 @@ def create_dash(flask_app):
         return render_tab_content('tab6', start_date, end_date, selected_stations, selected_groups, monthly_check)
 
     @app.callback(
-    Output("filter-panel", "className"),
-    Output("filter-column", "className"),
-    Output("content-column", "className"),
-    Input("toggle-filter-button", "n_clicks"),
-    State("filter-panel", "className"),
-    prevent_initial_call=True
-)
-    def toggle_filter(n_clicks, current_class):
-        is_hidden = "hidden" in (current_class or "")
-        panel_class = "" if is_hidden else "hidden"
-        filter_col_class = "responsive-filter" if is_hidden else "responsive-filter hidden"
-        content_col_class = "responsive-content" if is_hidden else "responsive-content expanded"
-        return panel_class, filter_col_class, content_col_class
+        Output("filter-panel", "className"),
+        Output("filter-column", "className"),
+        Output("content-column", "className"),
+        Output("trigger-graph-resize", "data"),
+        Input("toggle-filter-button", "n_clicks"),
+        State("filter-panel", "className"),
+        prevent_initial_call=True
+    )
+    def toggle_filter_panel(n_clicks, current_class):
+        filters_hidden = "hidden" in current_class
+
+        if filters_hidden:
+            return (
+                "",  # filtr znowu widoczny
+                "responsive-filter",
+                "responsive-content",  # normalna szerokość wykresów
+                {"value": random()}  # wyzwalacz dla clientside resize
+            )
+        else:
+            return (
+                "hidden",  # chowamy panel
+                "responsive-filter hidden",
+                "responsive-content expanded",  # wykresy na całą szerokość
+                {"value": random()}  # wyzwalacz dla clientside resize
+            )
     #przełączanie trybu jasny/ciemny
     @app.callback(
     Output('theme-store', 'data'),
     Input('theme-toggle-button', 'n_clicks'),
-    State('theme-store', 'data'),
+    Input('theme-store', 'data'),
     prevent_initial_call=True
 )
     def toggle_theme(n, current_theme):
@@ -1496,19 +1528,36 @@ def create_dash(flask_app):
 
         if (theme === 'dark') {
             body.classList.add('dark');
+            return '☀️';
         } else {
             body.classList.remove('dark');
+            return '🌙';
         }
-
-        return window.dash_clientside.no_update;
     }
     """,
-    Output("theme-toggle-button", "title"),  # cokolwiek, co nie powoduje przeładowania (fikcyjny output)
+    Output("theme-toggle-button", "children"),  
     Input("theme-store", "data"),
     prevent_initial_call=True
 )
+    
+    app.clientside_callback(
+        """
+        function(trigger) {
+            setTimeout(() => {
+                const graphs = document.querySelectorAll('.js-plotly-plot');
+                graphs.forEach(g => {
+                    Plotly.Plots.resize(g);
+                });
+            }, 300);
+            return window.dash_clientside.no_update;
+        }
+        """,
+        Output("theme-toggle-button", "n_clicks"),  # dummy output
+        Input("trigger-graph-resize", "data")
+    )
+    
 
-
+    
 
 
 
