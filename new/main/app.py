@@ -1441,10 +1441,12 @@ def create_dash(flask_app):
         Input('station-dropdown', 'value'),
         Input('group-dropdown', 'value'),
         Input("theme-store", "data"),
-        Input('product-dropdown', 'value')
+        Input('product-dropdown', 'value'),
+        Input('b2b-checklist', 'value')
+
         
     )
-    def update_heatmap(metric, start_date, end_date, selected_stations, selected_groups,theme_data, selected_products):
+    def update_heatmap(metric, start_date, end_date, selected_stations, selected_groups,theme_data, selected_products, selected_b2b):
         theme = theme_data.get("theme", "light")
         pio.templates.default = "corporate_dark" if theme == "dark" else "corporate_blue"
         start_date_obj = pd.to_datetime(start_date).date()
@@ -1452,7 +1454,9 @@ def create_dash(flask_app):
         dff = df[(df["Data"] >= start_date_obj) &
                  (df["Data"] <= end_date_obj) &
                  (df["Stacja"].isin(selected_stations)) &
+                 (df["B2B"].isin(selected_b2b)) &
                  (df["Grupa towarowa"].isin(selected_groups))].copy()
+        
         dff = dff[dff["Login POS"] != 99999].copy()
         if selected_products:
             dff = dff[dff["PLU_nazwa"].isin(selected_products)]
