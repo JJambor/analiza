@@ -209,7 +209,7 @@ def create_dash(flask_app):
         width="auto",
         className="ms-auto text-end"
     )
-], className="align-items-center mb-3"),
+], className="align-items-center mb-3 sticky-header"),
 
     html.Div([
         html.Div(id="filter-column", children=[
@@ -305,7 +305,7 @@ def create_dash(flask_app):
 
         html.Div(id="content-column", children=[
             dcc.Tabs(id='tabs', value='tab1', children=[
-                dcc.Tab(label='Ogólny', value='tab1',),
+                dcc.Tab(label='Ogólny', value='tab1'),
                 dcc.Tab(label='Sklep', value='tab2'),
                 dcc.Tab(label='Paliwo', value='tab3'),
                 dcc.Tab(label='Lojalność', value='tab4'),
@@ -313,8 +313,14 @@ def create_dash(flask_app):
                 dcc.Tab(label='Ulubione', value='tab6'),
                 dcc.Tab(label='Sprzedaż per kasjer', value='tab7')
             ]),
-            html.Div(id='tabs-content', style={'marginTop': '20px'})
+            dcc.Loading(
+                id="loading-main",
+                type="circle",
+                color="#0F4C81",
+                children=html.Div(id='tabs-content', style={'marginTop': '20px'})
+            )
         ], className="responsive-content")
+
     ], className="dashboard-layout")
 ], className="main-container", fluid=True, style={"width": "100%"})
 
