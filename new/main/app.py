@@ -80,17 +80,36 @@ pio.templates["corporate_dark"]["layout"]["legend"] = {
 # ---------------------------------------------
 # Funkcje pomocnicze
 # ---------------------------------------------
+
+
+#Zaokrąglenia wartości
+def format_metric_value(value, suffix=""):
+    if value >= 1_000_000:
+        formatted = f"{value / 1_000_000:.1f} mln"
+    elif value >= 100_000:
+        formatted = f"{round(value / 1_000):,.0f} tys."
+    elif value >= 1_000:
+        formatted = f"{value / 1_000:.1f} tys"
+    elif value < 100:
+        formatted = f"{value:,.2f}"
+    else:
+        formatted = f"{int(value):,}"
+    return formatted + suffix
+
+
 def get_free_days(start_date, end_date):
     pl_holidays = holidays.Poland(years=range(start_date.year, end_date.year + 1))
     date_range = pd.date_range(start=start_date, end=end_date)
     return [date for date in date_range if date.weekday() >= 5 or date in pl_holidays]
 
 def generate_metric_card(label, value, delta=None):
+    formatted_value = format_metric_value(value) if isinstance(value, (int, float)) else value
     return html.Div(className="metric-card", children=[
         html.Div(label, className="metric-label"),
-        html.Div(value, className="metric-value"),
+        html.Div(formatted_value, className="metric-value"),
         html.Div(delta if delta else "", className=f"metric-delta {'neutral' if not delta else ''}")
     ])
+
 
 
 
@@ -155,6 +174,8 @@ def create_dash(flask_app):
     global df_cached, hois_cached
     df_cached = df.copy()
     hois_cached = hois_map.copy()
+
+
 
     # ---------------------------------------------
     # Layout aplikacji Dash
@@ -445,27 +466,30 @@ def create_dash(flask_app):
                 html.Div([
                     html.Div([
                         html.Div("Obrót netto (NFR+Fuel)", className="metric-label"),
-                        html.Div(f"{total_netto / 1_000_000:.1f} mln zł", className="metric-value")
+                        html.Div(format_metric_value(total_netto, " zł"), className="metric-value")
+
+
                     ], className="metric-card"),
 
                     html.Div([
                         html.Div("Ilość transakcji", className="metric-label"),
-                        html.Div(f"{total_transactions / 1000:,.0f} tys.", className="metric-value")
+                        html.Div(format_metric_value(total_transactions), className="metric-value")
+
                     ], className="metric-card"),
 
                     html.Div([
                         html.Div("Sprzedaż kawy", className="metric-label"),
-                        html.Div(f"{round(kawa_netto / 1000):,} tys. zł", className="metric-value")
+                        html.Div(format_metric_value(kawa_netto, " zł"), className="metric-value")
                     ], className="metric-card"),
 
                     html.Div([
                         html.Div("Sprzedaż food", className="metric-label"),
-                        html.Div(f"{round(food_netto / 1000):,} tys. zł", className="metric-value")
+                        html.Div(format_metric_value(food_netto, " zł"), className="metric-value")
                     ], className="metric-card"),
 
                     html.Div([
                         html.Div("Sprzedaż myjni", className="metric-label"),
-                        html.Div(f"{round(myjnia_netto / 1000):,} tys. zł", className="metric-value")
+                        html.Div(format_metric_value(myjnia_netto, " zł"), className="metric-value")
                     ], className="metric-card"),
                 ], className="metric-container"),
 
@@ -504,7 +528,7 @@ def create_dash(flask_app):
 
             fig_shop_netto = px.line(netto_shop_df, x="Okres", y="Netto", color=category_col,
 
-                                     title="Obrót sklepowy netto (bez HOIS 0)", markers=True)
+                                     title="Obrót sklepowy netto (bez paliwa)", markers=True)
 
             netto_bez_hois0_mies = dff[dff["HOIS"] != 0].groupby("Okres")["Netto"].sum()
 
@@ -560,7 +584,7 @@ def create_dash(flask_app):
             if not top_products.empty:
                 fig_top_products = px.bar(top_products, x="Nazwa produktu", y="Ilość",
 
-                                          title="Top 10 najlepiej sprzedających się produktów (bez HOIS 0)")
+                                          title="Top 10 najlepiej sprzedających się produktów (bez paliwa)")
 
             fig_station_avg = None
 
@@ -597,12 +621,14 @@ def create_dash(flask_app):
                 html.Div([
                     html.Div([
                         html.Div("Obrót sklepowy netto", className="metric-label"),
-                        html.Div(f"{netto_bez_hois0 / 1_000_000:.2f} mln zł", className="metric-value")
+                        html.Div(format_metric_value(netto_bez_hois0, " zł"), className="metric-value")
+
                     ], className="metric-card"),
 
                     html.Div([
                         html.Div("Średnia wartość transakcji", className="metric-label"),
-                        html.Div(f"{avg_transaction:.2f} zł", className="metric-value")
+                        html.Div(format_metric_value(avg_transaction, " zł"), className="metric-value")
+
                     ], className="metric-card"),
                 ], className="metric-container"),
 
@@ -676,12 +702,18 @@ def create_dash(flask_app):
 
             ))
 
+                    # Dopasowanie koloru tekstu do trybu
+            text_color = "#000000" if theme != "dark" else "gray"
+
             if pareto_cutoff < len(pareto_df):
                 content.append(html.Div(
                     f"Granica 80% kumulacji: {pareto_df['Nazwa produktu'].iloc[pareto_cutoff]}",
-                    style={"color": "black", "fontWeight": "bold", "marginBottom": "10px"}
+                    style={
+                        "color": text_color,
+                        "fontWeight": "bold",
+                        "marginBottom": "10px"
+                    }
                 ))
-
             fig_pareto.update_layout(
 
                 title="Wykres Pareto produktów (bez HOIS 0, wg wartości netto)",
@@ -759,8 +791,8 @@ def create_dash(flask_app):
 
 
             metrics = html.Div(className="metric-container", children=[
-                generate_metric_card("Ilość litrów", f"{fuel_liters:,.0f} l"),
-                generate_metric_card("Liczba transakcji paliwowych", f"{fuel_tx:,}"),
+                generate_metric_card("Ilość litrów", format_metric_value(fuel_liters, " l")),
+                generate_metric_card("Liczba transakcji paliwowych", format_metric_value(fuel_tx)),
                 generate_metric_card("Penetracja V-Power", f"{penetracja_vpower:.1f}%"),
                 generate_metric_card("Śr. litry / transakcja", f"{avg_liters_per_tx:.2f} l"),
             ])
@@ -777,7 +809,7 @@ def create_dash(flask_app):
                 "Liczba": [len(non_b2b_invoice), len(fuel_df) - len(non_b2b_invoice)]
             })
             fig_flota = px.pie(flota_data, names="Typ", values="Liczba",
-                            title="Potencjał do założenia karty flotowej", hole=0.4)
+                            title="Potencjał B2B", hole=0.4)
             fig_flota.update_traces(textposition='inside', textinfo='percent+label')
 
             # Analiza transakcji: paliwo vs paliwo + sklep
@@ -796,7 +828,7 @@ def create_dash(flask_app):
 
 
             fig_mix = px.pie(tx_summary, names="Typ", values="Liczba",
-                            title="Transakcje paliwowe: tylko paliwo vs paliwo + sklep", hole=0.4)
+                            title="Tylko paliwo vs paliwo + sklep", hole=0.4)
             fig_mix.update_traces(textposition='inside', textinfo='percent+label')
 
             # B2B / B2C
@@ -809,7 +841,7 @@ def create_dash(flask_app):
             # Udział produktów paliwowych
             fuel_sales = fuel_df.groupby("Nazwa produktu")["Ilość"].sum().nlargest(10).reset_index()
             fig_fuel_products = px.pie(fuel_sales, names="Nazwa produktu", values="Ilość",
-                                    title="TOP 10 produktów paliwowych", hole=0.4)
+                                    title="Udział paliw", hole=0.4)
 
             # Dni wolne
             try:
@@ -830,7 +862,7 @@ def create_dash(flask_app):
                     dbc.Col(dcc.Graph(className="custom-graph", figure=fig_fuel_sales), width=12)
                 ]),
 
-                html.H4("Potencjał flotowy i zakupy sklepu"),
+                
                 dbc.Row([
                     dbc.Col(dcc.Graph(className="custom-graph", figure=fig_flota), xs=12, md=6),
                     dbc.Col(dcc.Graph(className="custom-graph", figure=fig_mix),xs=12, md=6)
@@ -1096,19 +1128,11 @@ def create_dash(flask_app):
             penetration = (carwash_tx / all_tx) * 100 if all_tx else 0
 
             metric_carwash = html.Div(className="metric-container", children=[
-
-                generate_metric_card("Sprzedane programy", f"{sales_total:,.0f} szt."),
-
+                generate_metric_card("Sprzedane programy", format_metric_value(sales_total, " szt.")),
                 generate_metric_card("Udział myjnii", f"{penetration:.1f}%"),
-
-                generate_metric_card("Karnety", f"{sales_karnet:,.0f} szt."),
-
-                generate_metric_card("Standard", f"{program_sales.get('Myjnia Standard', 0):,.0f} szt."),
-
-                generate_metric_card("xpress", f"{program_sales.get('Myjnia Express', 0):,.0f} szt.")
-
-
-
+                generate_metric_card("Karnety", format_metric_value(sales_karnet, " szt.")),
+                generate_metric_card("Standard", format_metric_value(program_sales.get('Myjnia Standard', 0), " szt.")),
+                generate_metric_card("Express", format_metric_value(program_sales.get('Myjnia Express', 0), " szt."))
             ])
 
             carwash_grouped = carwash_df.groupby(["Okres"] + ([category_col] if category_col else []))[
@@ -1502,7 +1526,7 @@ def create_dash(flask_app):
         )
 
         fig.update_layout(
-            xaxis_title="Godzina dnia",
+            xaxis_title="Godzina",
             yaxis_title="Dzień tygodnia",
             yaxis=dict(autorange="reversed"),
             xaxis=dict(type="category", tickmode="linear")
