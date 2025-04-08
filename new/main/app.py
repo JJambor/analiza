@@ -123,6 +123,7 @@ def load_data():
         raise Exception("Brak poprawnych danych do połączenia!")
     df = pd.concat(dfs, ignore_index=True)
     df = df.dropna(subset=["Data_full"])
+    
     return df
 
 
@@ -132,6 +133,7 @@ def create_dash(flask_app):
     # ---------------------------------------------
     hois_map = load_hois_map()
     df = load_data()
+    df["PLU_nazwa"] = df["PLU"].astype(str).str.strip() + " - " + df["Nazwa produktu"].astype(str).str.strip()
     global df_cached, hois_cached
     df_cached = df.copy()
     hois_cached = hois_map.copy()
@@ -241,6 +243,17 @@ def create_dash(flask_app):
                                     className="dropdown-grupy"
                                 )
                             ], className="mb-4"),
+                            html.Div([
+                                html.Label("Produkt (PLU - Nazwa):", className="form-label"),
+                                dcc.Dropdown(
+                                    id='product-dropdown',
+                                    options=[{'label': p, 'value': p} for p in sorted(df["PLU_nazwa"].unique())],
+                                    multi=True,
+                                    placeholder="Wybierz produkt (opcjonalnie)",
+                                    className="dropdown-produkt"
+                                )
+                            ], className="mb-4"),
+
 
                             html.Div([
                                 html.Label("Typ transakcji B2B:", className="form-label"),
@@ -341,11 +354,13 @@ def create_dash(flask_app):
         Input('group-dropdown', 'value'),
         Input('monthly-check', 'value'),
         Input('b2b-checklist', 'value'),
-        Input('theme-store', 'data')
+        Input('theme-store', 'data'),
+        Input('product-dropdown', 'value')
+
         
 
     )
-    def render_tab_content(tab, start_date, end_date, selected_stations, selected_groups, monthly_check, selected_b2b,theme_data):
+    def render_tab_content(tab, start_date, end_date, selected_stations, selected_groups, monthly_check, selected_b2b,theme_data,selected_products):
         theme = theme_data.get("theme", "light")
         pio.templates.default = "corporate_dark" if theme == "dark" else "corporate_blue"
         start_date_obj = pd.to_datetime(start_date).date()
@@ -359,6 +374,9 @@ def create_dash(flask_app):
             (df["Grupa towarowa"].isin(selected_groups)) &
             (df["B2B"].isin(selected_b2b))  # filtr B2B
         ].copy()
+        if selected_products:
+            dff = dff[dff["PLU_nazwa"].isin(selected_products)]
+
 
         # Usunięcie loginu technicznego
         dff = dff[dff["Login POS"] != 99999].copy()
@@ -370,6 +388,7 @@ def create_dash(flask_app):
         else:
             dff["Okres"] = dff["Data"]
             category_col = None
+        
 
     # Dalej możesz robić wykresy itp. na podstawie dff
     # return np. wykres, tabela lub komponent html
@@ -793,14 +812,14 @@ def create_dash(flask_app):
 
                 html.H4("Potencjał flotowy i zakupy sklepu"),
                 dbc.Row([
-                    dbc.Col(dcc.Graph(className="custom-graph", figure=fig_flota), width=6),
-                    dbc.Col(dcc.Graph(className="custom-graph", figure=fig_mix), width=6)
-                ]),
+                    dbc.Col(dcc.Graph(className="custom-graph", figure=fig_flota), xs=12, md=6),
+                    dbc.Col(dcc.Graph(className="custom-graph", figure=fig_mix),xs=12, md=6)
+                ], className="graph-row"),
 
                 dbc.Row([
-                    dbc.Col(dcc.Graph(className="custom-graph", figure=fig_customer_types), width=6),
-                    dbc.Col(dcc.Graph(className="custom-graph", figure=fig_fuel_products), width=6)
-                ])
+                    dbc.Col(dcc.Graph(className="custom-graph", figure=fig_customer_types), xs=12, md=6),
+                    dbc.Col(dcc.Graph(className="custom-graph", figure=fig_fuel_products), xs=12, md=6)
+                ], className="graph-row")
             ])
 
 
@@ -1443,12 +1462,14 @@ def create_dash(flask_app):
         heat_pivot = grouped.pivot(index="Dzień tygodnia", columns="Godzina", values="Wartość")
         heat_pivot.index = [dni[i] for i in heat_pivot.index]
 
+        color_scale = "Blues" if theme != "dark" else "Blues_r"
+
         fig = px.imshow(
             heat_pivot,
             labels=dict(x="Godzina", y="Dzień tygodnia", color=metric),
             x=[str(g) for g in godziny],
             aspect="auto",
-            color_continuous_scale="Blues",
+            color_continuous_scale=color_scale,
             title=f"📊 Heatmapa – {metric}"
         )
 
