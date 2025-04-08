@@ -237,9 +237,27 @@ body {
 }
 
 .DateRangePickerInput {
+    position: relative;
+    display: flex;
     border: 1px solid #ccc !important;
     border-radius: 6px !important;
     background-color: white !important;
+    justify-content: center;
+    align-items: center;
+    gap: 6px;
+
+}
+.DateRangePickerInput:after {
+    content: "–";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-weight: 600;
+    color: #444;
+    font-size: 16px;
+    pointer-events: none;
+    z-index: 2;
 }
 
 .DateInput_input {
@@ -501,8 +519,56 @@ body {
     border-bottom: 1px solid #e0e0e0;
     transition: background-color 0.3s ease;
 }
+.DateRangePickerInput_arrow,
+.DateRangePickerInput_arrow svg {
+    display: none !important;
+}
+.date-range-custom {
+    display: flex;
+    gap: 20px;
+}
+
+.date-column {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+}
+
+.date-label {
+    font-weight: 600;
+    font-size: 13px;
+    margin-bottom: 4px;
+    color: #333;
+}
+.DateRangePicker,
+.DateRangePicker_picker,
+.DateInput,
+.SingleDatePicker_picker {
+    z-index: 2000 !important;
+}
+
+/* Poprawka dla kontenera filtra, jeśli ma ograniczenia */
+#filter-panel,
+#filter-column {
+    overflow-y: auto !important;
+    overflow-x: visible !important;
+}
+#filter-panel {
+    max-height: none !important;
+    overflow: visible !important;
+}
+
+/* Nadpisanie ograniczeń kontenera */
+.dash-bootstrap .row,
+.dash-bootstrap .col,
+.custom-card {
+    overflow: visible !important;
+}
 
 /*CIEMNY MOTYW !!!*/
+body.dark .date-label {
+    color: #f1f1f1;
+}
 body.dark .sticky-header {
     background-color: #1e1e1e;
     border-bottom: 1px solid #444;
@@ -820,10 +886,12 @@ body.dark .Select-arrow-zone {
     color: #BFD7EA !important;
 }
 body.dark .DateRangePickerInput_arrow svg {
+    display: none !important;
     fill: #A8DADC !important;  /* Jasny kolor dla strzałki */
 }
 /* Zmiana koloru strzałki przy najechaniu */
 body.dark .DateRangePickerInput_arrow svg:hover {
+    display: none !important;
     fill: #74C0FC !important;  /* Zmieniamy na złoty przy najechaniu */
 }
 /* Input tekstowy wewnątrz (np. filtr) */
@@ -961,16 +1029,45 @@ body.dark .Select-input > input {
 
 }
 @media (min-width: 992px) {
-    .responsive-filter {
+    /* Sticky filtr */
+    #filter-column {
         position: sticky;
-        top: 20px; /* wysokość od góry (możesz dostosować) */
-        align-self: flex-start;
-        max-height: calc(100vh - 40px);
+        top: 80px; /* Możesz dostosować w zależności od wysokości headera */
+        height: calc(100vh - 100px); /* Cała wysokość okna minus margines */
         overflow-y: auto;
-        z-index: 10;
+        overflow-x: visible;
+        padding-right: 10px; /* żeby scrollbar nie nachodził na zawartość */
+        z-index: 20;
+    }
+
+    /* Dropdowny (Select) */
+    .Select-menu-outer,
+    .Select-menu {
+        max-height: 250px;
+        overflow-y: auto;
+        z-index: 9999 !important;
+    }
+
+    /* Kalendarz */
+    .DateInput,
+    .DateInput_input {
+        z-index: 999 !important;
+    }
+
+    /* Dropdown Dash Bootstrap Components */
+    .dropdown-menu {
+        z-index: 9999 !important;
+    }
+
+    /* Scrollbar wygląd (opcjonalne) */
+    #filter-column::-webkit-scrollbar {
+        width: 8px;
+    }
+    #filter-column::-webkit-scrollbar-thumb {
+        background-color: rgba(0,0,0,0.2);
+        border-radius: 4px;
     }
 }
-
 
 
 
