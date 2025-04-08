@@ -212,42 +212,64 @@ def create_dash(flask_app):
 ], className="align-items-center mb-3 sticky-header"),
 
     html.Div([
-        html.Div(id="filter-column", children=[
-            html.Div(id="filter-panel",className="", children=[
-                dbc.Card(
-                    dbc.CardBody([
+    html.Div(id="filter-column", children=[
+        html.Div(id="filter-panel", className="", children=[
+            dbc.Card(
+                dbc.CardBody([
+                    html.Div([
+                        html.H4("Filtry", className="card-title mb-4"),
+
+                        # === Zmieniony zakres dat ===
                         html.Div([
-                            html.H4("Filtry", className="card-title mb-4"),
-
+                            html.Label("Zakres dat", className="form-label"),
                             html.Div([
-                                html.Label("Zakres dat", className="form-label"),
-                                dcc.DatePickerRange(
-                                    id='date-picker',
-                                    min_date_allowed=min_date,
-                                    max_date_allowed=max_date,
-                                    start_date=max(min_date, first_day_last_month),
-                                    end_date=max_date,
-                                    display_format='YYYY-MM-DD',
-                                    className="form-control"
-                                )
-                            ], className="mb-4"),
-
-                            html.Div([
-                                html.Label("Stacje:", className="form-label"),
                                 html.Div([
-                                    dbc.Button("Zaznacz wszystkie", id='select-all-stations', size="sm",
-                                               color="primary", className="me-2", n_clicks=0),
-                                    dbc.Button("Odznacz wszystkie", id='deselect-all-stations', size="sm",
-                                               color="secondary", n_clicks=0),
-                                ], className="mb-2"),
-                                dcc.Dropdown(
-                                    id='station-dropdown',
-                                    options=[{'label': s, 'value': s} for s in station_options],
-                                    value=station_options,
-                                    multi=True,
-                                    className="dropdown-stacje"
-                                )
-                            ], className="mb-4"),
+                                    html.Div("Od", className="date-label"),
+                                    dcc.DatePickerSingle(
+                                        id='start-date',
+                                        min_date_allowed=min_date,
+                                        max_date_allowed=max_date,
+                                        date=max(min_date, first_day_last_month),
+                                        display_format='YYYY-MM-DD',
+                                        className="form-control"
+                                    )
+                                ], className="date-column"),
+
+                                html.Div([
+                                    html.Div("Do", className="date-label"),
+                                    dcc.DatePickerSingle(
+                                        id='end-date',
+                                        min_date_allowed=min_date,
+                                        max_date_allowed=max_date,
+                                        date=max_date,
+                                        display_format='YYYY-MM-DD',
+                                        className="form-control"
+                                    )
+                                ], className="date-column")
+                            ], className="date-range-custom d-flex gap-3")
+                        ], className="mb-4"),
+                        # ===========================
+
+                        html.Div([
+                            html.Label("Stacje:", className="form-label"),
+                            html.Div([
+                                dbc.Button("Zaznacz wszystkie", id='select-all-stations', size="sm",
+                                           color="primary", className="me-2", n_clicks=0),
+                                dbc.Button("Odznacz wszystkie", id='deselect-all-stations', size="sm",
+                                           color="secondary", n_clicks=0),
+                            ], className="mb-2"),
+                            dcc.Dropdown(
+                                id='station-dropdown',
+                                options=[{'label': s, 'value': s} for s in station_options],
+                                value=station_options,
+                                multi=True,
+                                className="dropdown-stacje"
+                            )
+                        ], className="mb-4"),
+
+                      
+  
+
 
                             html.Div([
                                 html.Label("Grupy towarowe:", className="form-label"),
@@ -395,8 +417,9 @@ def create_dash(flask_app):
     @app.callback(
         Output('tabs-content', 'children'),
         Input('tabs', 'value'),  # Fixed from 'value_1value' to 'value'
-        Input('date-picker', 'start_date'),
-        Input('date-picker', 'end_date'),
+        Input('start-date', 'date'),
+        Input('end-date', 'date'),
+
         Input('station-dropdown', 'value'),
         Input('group-dropdown', 'value'),
         Input('monthly-check', 'value'),
@@ -1371,8 +1394,9 @@ def create_dash(flask_app):
         Output("top-products-graph", "figure"),
         Output("top-products-per-tx-graph", "figure"),
         Input("top-month-dropdown", "value"),
-        State('date-picker', 'start_date'),
-        State('date-picker', 'end_date'),
+        Input('start-date', 'date'),
+        Input('end-date', 'date'),
+
         State('station-dropdown', 'value'),
         State('group-dropdown', 'value'),
         Input("theme-store", "data")
@@ -1466,8 +1490,9 @@ def create_dash(flask_app):
     @app.callback(
         Output('heatmap-graph', 'figure'),
         Input('metric-selector', 'value'),
-        Input('date-picker', 'start_date'),
-        Input('date-picker', 'end_date'),
+        Input('start-date', 'date'),
+        Input('end-date', 'date'),
+
         Input('station-dropdown', 'value'),
         Input('group-dropdown', 'value'),
         Input("theme-store", "data"),
@@ -1546,8 +1571,9 @@ def create_dash(flask_app):
     @app.callback(
         Output('tabs-content', 'children', allow_duplicate=True),
         Input({'type': 'remove-favorite', 'index': dash.ALL}, 'n_clicks'),
-        State('date-picker', 'start_date'),
-        State('date-picker', 'end_date'),
+        Input('start-date', 'date'),
+        Input('end-date', 'date'),
+
         State('station-dropdown', 'value'),
         State('group-dropdown', 'value'),
         State('monthly-check', 'value'),
