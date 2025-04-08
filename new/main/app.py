@@ -1420,10 +1420,11 @@ def create_dash(flask_app):
         Input('date-picker', 'end_date'),
         Input('station-dropdown', 'value'),
         Input('group-dropdown', 'value'),
-        Input("theme-store", "data")
+        Input("theme-store", "data"),
+        Input('product-dropdown', 'value')
         
     )
-    def update_heatmap(metric, start_date, end_date, selected_stations, selected_groups,theme_data):
+    def update_heatmap(metric, start_date, end_date, selected_stations, selected_groups,theme_data, selected_products):
         theme = theme_data.get("theme", "light")
         pio.templates.default = "corporate_dark" if theme == "dark" else "corporate_blue"
         start_date_obj = pd.to_datetime(start_date).date()
@@ -1433,6 +1434,9 @@ def create_dash(flask_app):
                  (df["Stacja"].isin(selected_stations)) &
                  (df["Grupa towarowa"].isin(selected_groups))].copy()
         dff = dff[dff["Login POS"] != 99999].copy()
+        if selected_products:
+            dff = dff[dff["PLU_nazwa"].isin(selected_products)]
+
 
         dff["Godzina"] = pd.to_datetime(dff["Data_full"], errors="coerce").dt.hour
         dff["Dzień tygodnia"] = pd.to_datetime(dff["Data_full"], errors="coerce").dt.dayofweek
