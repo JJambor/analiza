@@ -134,9 +134,7 @@ def create_dash(flask_app):
     hois_map = load_hois_map()
     df = load_data()
     df["PLU_nazwa"] = df["PLU"].astype(str).str.strip() + " - " + df["Nazwa produktu"].astype(str).str.strip()
-    global df_cached, hois_cached
-    df_cached = df.copy()
-    hois_cached = hois_map.copy()
+    
     # Obliczenie pierwszego dnia poprzedniego miesiąca jako domyślny start_date
     today = datetime.date.today()
     first_day_this_month = today.replace(day=1)
@@ -154,6 +152,9 @@ def create_dash(flask_app):
     max_date = df["Data"].max()
     station_options = df["Stacja"].unique().tolist()
     group_options = df["Grupa towarowa"].unique().tolist()
+    global df_cached, hois_cached
+    df_cached = df.copy()
+    hois_cached = hois_map.copy()
 
     # ---------------------------------------------
     # Layout aplikacji Dash
@@ -247,7 +248,7 @@ def create_dash(flask_app):
                                 html.Label("Produkt (PLU - Nazwa):", className="form-label"),
                                 dcc.Dropdown(
                                     id='product-dropdown',
-                                    options=[{'label': p, 'value': p} for p in sorted(df["PLU_nazwa"].unique())],
+                                    options=[],
                                     multi=True,
                                     placeholder="Wybierz produkt (opcjonalnie)",
                                     className="dropdown-produkt"
@@ -341,6 +342,25 @@ def create_dash(flask_app):
             elif button_id == 'deselect-all-groups':
                 return []
         return dash.no_update
+    # Callback do aktualizacji listy produktów na podstawie wybranych grup towarowych
+    @app.callback(
+    Output('product-dropdown', 'options'),
+    Input('group-dropdown', 'value')
+)
+    def update_product_options(selected_groups):
+        if not selected_groups:
+            return []
+
+        df_filtered = df_cached[df_cached["Grupa towarowa"].isin(selected_groups)].copy()
+        
+        if df_filtered.empty:
+            return []
+
+        options = sorted(df_filtered["PLU_nazwa"].dropna().unique())
+
+        return [{'label': opt, 'value': opt} for opt in options]
+
+
 
     # ---------------------------------------------
     # Callback renderujący zawartość zakładki
