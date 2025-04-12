@@ -565,6 +565,41 @@ body {
     overflow: visible !important;
 }
 
+.sticky-header {
+    z-index: 100;
+}
+#filter-panel {
+    overflow: visible !important;
+    position: relative !important;
+    z-index: 1;
+}
+/* Dla całej kolumny filtrów – zostaje sticky */
+#filter-column {
+    position: sticky !important;
+    top: 80px; /* lub ile potrzebujesz */
+    z-index: 10;
+    height: calc(100vh - 100px); /* jak masz w kodzie */
+    overflow-y: auto;
+    overflow-x: visible;
+}
+
+/* Dla komponentu DatePicker (np. Dash lub React-Datepicker) */
+.SingleDatePicker_picker {
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    z-index: 9999 !important;
+}
+.DateRangePicker_picker {
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    z-index: 9999 !important;
+}
+.SingleDatePicker_picker,
+.DateRangePicker_picker {
+    max-width: 90vw;
+    width: auto;
+}
+
 /*CIEMNY MOTYW !!!*/
 body.dark .date-label {
     color: #f1f1f1;
