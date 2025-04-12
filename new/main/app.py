@@ -3,14 +3,14 @@ import dash
 from dash import dcc, html, Input, Output, State, dash_table
 import dash_bootstrap_components as dbc
 import pandas as pd
-from mlxtend.frequent_patterns import apriori, association_rules
-from mlxtend.preprocessing import TransactionEncoder
+# from mlxtend.frequent_patterns import apriori, association_rules
+# from mlxtend.preprocessing import TransactionEncoder
 import plotly.express as px
 import plotly.io as pio
 import holidays
 import datetime
 import plotly.graph_objects as go
-import dash_mantine_components as dmc
+# import dash_mantine_components as dmc
 
 corporate_blue_palette = [
     "#0F4C81",  # Dark navy Blue
