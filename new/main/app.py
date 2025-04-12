@@ -1,1109 +1,1683 @@
-/* ====== GLOBAL ====== */
+from random import random
+import dash
+from dash import dcc, html, Input, Output, State, dash_table
+import dash_bootstrap_components as dbc
+import pandas as pd
+from mlxtend.frequent_patterns import apriori, association_rules
+from mlxtend.preprocessing import TransactionEncoder
+import plotly.express as px
+import plotly.io as pio
+import holidays
+import datetime
+import plotly.graph_objects as go
+import dash_mantine_components as dmc
 
-body {
-    font-family: 'Open Sans', sans-serif;
-    background-color: #f9f9f9;
-    color: #333;
-    transition: background-color 0.5s, color 0.5s;
+corporate_blue_palette = [
+    "#0F4C81",  # Dark navy Blue
+    "#2A9D8F",  # Soft navy
+    "#A8DADC",  # Light Aqua
+    "#E9F5FB",  # Very Light Blue
+    "#457B9D",  # Blue Steel
+    "#1D3557",  # Deep Blue
+    "#74C0FC",  # Sky Blue Accent
+    "#BFD7EA",  # Soft Grayish Blue
+    "#F1FAFB",  # Almost White
+    "#5DADE2",  # Brighter Blue Accent
+]
+
+pio.templates["corporate_blue"] = pio.templates["plotly_white"]
+pio.templates["corporate_blue"]["layout"]["colorway"] = corporate_blue_palette
+pio.templates["corporate_blue"]["layout"]["font"] = {
+    "family": "Segoe UI, Open Sans, sans-serif",
+    "size": 15,
+    "color": "#1D3557"
+}
+pio.templates["corporate_blue"]["layout"]["title"] = {
+    "x": 0.05,
+    "xanchor": "left",
+    "font": {
+        "size": 20,
+        "color": "#0F4C81",
+        "family": "Segoe UI Semibold, sans-serif"
+    }
+}
+pio.templates["corporate_blue"]["layout"]["plot_bgcolor"] = "#FFFFFF"
+pio.templates["corporate_blue"]["layout"]["paper_bgcolor"] = "#FFFFFF"
+pio.templates["corporate_blue"]["layout"]["legend"] = {
+    "bgcolor": "rgba(0,0,0,0)",
+    "bordercolor": "#E0E0E0",
+    "borderwidth": 1
 }
 
-.main-container {
-    padding: 30px;
-    background-color: #ffffff;
-    width: 100% !important;
-    max-width: 100% !important;
+pio.templates.default = "corporate_blue"
+
+#Ciemny motyw
+corporate_dark_palette = [
+    "#74C0FC", "#2A9D8F", "#A8DADC", "#FFD166", "#EF476F", "#BFD7EA", "#F1FAFB"
+]
+
+pio.templates["corporate_dark"] = pio.templates["plotly_dark"]
+pio.templates["corporate_dark"]["layout"]["colorway"] = corporate_dark_palette
+pio.templates["corporate_dark"]["layout"]["font"] = {
+    "family": "Segoe UI, Open Sans, sans-serif",
+    "size": 15,
+    "color": "#f1f1f1"
 }
-
-/* ====== KARTY I SEKCJE ====== */
-
-.custom-card {
-    background-color: #ffffff;
-    padding: 20px;
-    margin-bottom: 30px;
-    border-radius: 6px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
+pio.templates["corporate_dark"]["layout"]["title"] = {
+    "x": 0.05,
+    "xanchor": "left",
+    "font": {
+        "size": 20,
+        "color": "#74C0FC",
+        "family": "Segoe UI Semibold, sans-serif"
+    }
 }
-
-.card-title {
-    font-size: 20px;
-    font-weight: 700;
-    margin-bottom: 20px;
-    color: #222;
-}
-
-/* ====== WYKRESY ====== */
-
-.custom-graph {
-    height: auto;
-    padding: 10px;
-    background-color: white;
-    border-radius: 6px;
-    margin-bottom: 30px;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.05);
-}
-
-/* ====== FORMULARZ FILTRÓW ====== */
-
-.filter-form {
-    font-size: 14px;
-}
-
-.filter-form label,
-.filter-form .form-label {
-    font-weight: 600;
-    margin-bottom: 6px;
-    color: #333;
-    display: block;
-}
-
-.filter-form .form-control {
-    border: none;
-    border-radius: 4px;
-    padding: 8px 12px;
-    font-size: 14px;
-    width: 100%;
-    box-shadow: none;
-}
-
-/* Zewnętrzne kontenery typu dropdown / datepicker mogą mieć ramkę */
-.filter-form .form-control-wrapper {
-    border: 1px solid #ccc;
-    border-radius: 6px;
-    background-color: white;
-}
-
-/* Focus efekt */
-.filter-form .form-control:focus,
-.filter-form .form-control-wrapper:focus-within {
-    border-color: #888;
-    outline: none;
-}
-
-/* ====== CHECKBOXY ====== */
-
-.filter-form .form-check {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 14px;
-    font-weight: 500;
-}
-
-.filter-form .form-check input[type="checkbox"] {
-    width: 18px;
-    height: 18px;
-    accent-color: #0F4C81;
-}
-
-/* ====== BUTTONY ====== */
-
-.btn-primary {
-    background-color: #0F4C81 !important;
-    border-color: #0F4C81 !important;
-    font-weight: 600;
-    border-radius: 4px;
-}
-
-.btn-primary:hover {
-    background-color: #1D3557 !important;
-    border-color: #1D3557 !important;
-}
-
-.btn-secondary {
-    background-color: #457B9D !important;
-    border-color: #457B9D !important;
-    font-weight: 600;
-    border-radius: 4px;
-}
-
-.btn-secondary:hover {
-    background-color: #2A9D8F !important;
-    border-color: #2A9D8F !important;
-}
-
-/* ====== DROPDOWN MULTISELECT ====== */
-
-.Select__control {
-    border: none !important;
-    box-shadow: none !important;
-    background-color: transparent !important;
-    min-height: 44px !important;
-}
-
-.form-control-wrapper .Select__control {
-    padding: 4px !important;
-}
-
-.form-control .Select__multi-value {
-    background-color: #0F4C81 !important;
-    color: white !important;
-    font-weight: 600;
-    border-radius: 4px;
-    padding: 4px 6px;
-    font-size: 13px;
-    margin: 3px;
-    display: inline-flex;
-    align-items: center;
-    box-shadow: 0 0 0 2px rgba(15, 76, 129, 0.2);
-}
-
-.form-control .Select__multi-value__remove {
-    color: white !important;
-    opacity: 0.8;
-}
-
-.form-control .Select__multi-value__remove:hover {
-    color: #FFD700 !important;
-    opacity: 1;
+pio.templates["corporate_dark"]["layout"]["plot_bgcolor"] = "#1e1e1e"
+pio.templates["corporate_dark"]["layout"]["paper_bgcolor"] = "#1e1e1e"
+pio.templates["corporate_dark"]["layout"]["legend"] = {
+    "bgcolor": "rgba(0,0,0,0)",
+    "bordercolor": "#444",
+    "borderwidth": 1
 }
 
 
-.Select__menu {
-    border-radius: 4px !important;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important;
+# ---------------------------------------------
+# Funkcje pomocnicze
+# ---------------------------------------------
+
+
+#Zaokrąglenia wartości
+def format_metric_value(value, suffix=""):
+    if value >= 1_000_000:
+        formatted = f"{value / 1_000_000:.1f} mln"
+    elif value >= 100_000:
+        formatted = f"{round(value / 1_000):,.0f} tys."
+    elif value >= 1_000:
+        formatted = f"{value / 1_000:.1f} tys"
+    elif value < 100:
+        formatted = f"{value:,.2f}"
+    else:
+        formatted = f"{int(value):,}"
+    return formatted + suffix
+
+
+def get_free_days(start_date, end_date):
+    pl_holidays = holidays.Poland(years=range(start_date.year, end_date.year + 1))
+    date_range = pd.date_range(start=start_date, end=end_date)
+    return [date for date in date_range if date.weekday() >= 5 or date in pl_holidays]
+
+def generate_metric_card(label, value, delta=None):
+    formatted_value = format_metric_value(value) if isinstance(value, (int, float)) else value
+    return html.Div(className="metric-card", children=[
+        html.Div(label, className="metric-label"),
+        html.Div(formatted_value, className="metric-value"),
+        html.Div(delta if delta else "", className=f"metric-delta {'neutral' if not delta else ''}")
+    ])
+
+
+
+
+def load_hois_map():
+    file_path = "hois_map.csv"
+    hois_df = pd.read_csv(file_path, encoding="utf-8", sep=";")
+    hois_df.columns = [col.strip() for col in hois_df.columns]
+    expected_columns = ["HOIS", "Grupa towarowa", "Grupa sklepowa"]
+    actual_columns = hois_df.columns.tolist()
+    if len(actual_columns) != len(expected_columns):
+        raise Exception(f"Plik CSV powinien mieć kolumny: {expected_columns}, ale znaleziono: {actual_columns}")
+    return {row["HOIS"]: (row["Grupa towarowa"], row["Grupa sklepowa"]) for _, row in hois_df.iterrows()}
+
+
+def load_data():
+    files = ["data01.xlsx", "data02.xlsx", "data03.xlsx", "data04.xlsx", "data05.xlsx"]
+    dfs = []
+    for file in files:
+        try:
+            df_month = pd.read_excel(file)
+            if "Data" not in df_month.columns:
+                print(f"Błąd: W pliku {file} brak kolumny 'Data'")
+                continue
+            df_month["Data_full"] = pd.to_datetime(df_month["Data"], errors="coerce")
+            df_month["Data"] = df_month["Data_full"].dt.date
+            dfs.append(df_month)
+        except Exception as e:
+            print(f"Błąd przy wczytywaniu {file}: {e}")
+    if not dfs:
+        raise Exception("Brak poprawnych danych do połączenia!")
+    df = pd.concat(dfs, ignore_index=True)
+    df = df.dropna(subset=["Data_full"])
+    
+    return df
+
+
+def create_dash(flask_app):
+    # ---------------------------------------------
+    # Wczytanie danych
+    # ---------------------------------------------
+    hois_map = load_hois_map()
+    df = load_data()
+    df["PLU_nazwa"] = df["PLU"].astype(str).str.strip() + " - " + df["Nazwa produktu"].astype(str).str.strip()
+    
+    # Obliczenie pierwszego dnia poprzedniego miesiąca jako domyślny start_date
+    today = datetime.date.today()
+    first_day_this_month = today.replace(day=1)
+    last_month = first_day_this_month - datetime.timedelta(days=1)
+    first_day_last_month = last_month.replace(day=1)
+
+
+
+    # Mapowanie dodatkowych kolumn
+    df["Grupa towarowa"] = df["HOIS"].map(lambda x: hois_map.get(x, ("Nieznana", "Nieznana"))[0])
+    df["Grupa sklepowa"] = df["HOIS"].map(lambda x: hois_map.get(x, ("Nieznana", "Nieznana"))[1])
+
+    # Ustalenie zakresu dat i opcji do filtrów
+    min_date = df["Data"].min()
+    max_date = df["Data"].max()
+    station_options = df["Stacja"].unique().tolist()
+    group_options = df["Grupa towarowa"].unique().tolist()
+    global df_cached, hois_cached
+    df_cached = df.copy()
+    hois_cached = hois_map.copy()
+
+
+
+    # ---------------------------------------------
+    # Layout aplikacji Dash
+    # ---------------------------------------------
+    app = dash.Dash(
+        __name__,
+        external_stylesheets=[dbc.themes.BOOTSTRAP],
+        server=flask_app,
+        url_base_pathname="/dashboard/",
+        suppress_callback_exceptions=True,  # Added to handle dynamic components
+        title="Kompas"
+    )
+
+    # Mock session state for favorites
+    app.server.config['FAVORITES'] = set()
+
+    app.layout = dbc.Container([
+    dcc.Store(id='theme-store', data={'theme': 'light'}),
+    dcc.Store(id="trigger-graph-resize", data={"value": 0}),
+    dcc.Interval(id="theme-init", n_intervals=0, max_intervals=1, interval=200),
+
+
+
+    dbc.Row([
+    dbc.Col(
+        dbc.Button("Pokaż / Ukryj filtry", id="toggle-filter-button", color="primary", n_clicks=0),
+        width="auto"
+    ),
+    
+    dbc.Col(
+        dbc.Button("🌙", id="theme-toggle-button", color="primary", n_clicks=0, title="Zmień motyw"),
+        width="auto",
+        className="ms-auto text-end"
+    )
+], className="align-items-center mb-3 sticky-header"),
+
+    html.Div([
+    html.Div(id="filter-column", children=[
+        html.Div(id="filter-panel", className="", children=[
+            dbc.Card(
+                dbc.CardBody([
+                    html.Div([
+                        html.H4("Filtry", className="card-title mb-4"),
+
+                        # === Zmieniony zakres dat ===
+                        html.Div([
+                            html.Label("Zakres dat", className="form-label"),
+                            html.Div([
+                                html.Div([
+                                    html.Div("Od", className="date-label"),
+                                    dcc.DatePickerSingle(
+                                        id='start-date',
+                                        min_date_allowed=min_date,
+                                        max_date_allowed=max_date,
+                                        date=max(min_date, first_day_last_month),
+                                        display_format='YYYY-MM-DD',
+                                        className="form-control"
+                                    )
+                                ], className="date-column"),
+
+                                html.Div([
+                                    html.Div("Do", className="date-label"),
+                                    dcc.DatePickerSingle(
+                                        id='end-date',
+                                        min_date_allowed=min_date,
+                                        max_date_allowed=max_date,
+                                        date=max_date,
+                                        display_format='YYYY-MM-DD',
+                                        className="form-control"
+                                    )
+                                ], className="date-column")
+                            ], className="date-range-custom d-flex gap-3")
+                        ], className="mb-4"),
+                        # ===========================
+
+                        html.Div([
+                            html.Label("Stacje:", className="form-label"),
+                            html.Div([
+                                dbc.Button("Zaznacz wszystkie", id='select-all-stations', size="sm",
+                                           color="primary", className="me-2", n_clicks=0),
+                                dbc.Button("Odznacz wszystkie", id='deselect-all-stations', size="sm",
+                                           color="secondary", n_clicks=0),
+                            ], className="mb-2"),
+                            dcc.Dropdown(
+                                id='station-dropdown',
+                                options=[{'label': s, 'value': s} for s in station_options],
+                                value=station_options,
+                                multi=True,
+                                className="dropdown-stacje"
+                            )
+                        ], className="mb-4"),
+
+                      
+  
+
+
+                            html.Div([
+                                html.Label("Grupy towarowe:", className="form-label"),
+                                html.Div([
+                                    dbc.Button("Zaznacz wszystkie", id='select-all-groups', size="sm",
+                                               color="primary", className="me-2", n_clicks=0),
+                                    dbc.Button("Odznacz wszystkie", id='deselect-all-groups', size="sm",
+                                               color="secondary", n_clicks=0),
+                                ], className="mb-2"),
+                                dcc.Dropdown(
+                                    id='group-dropdown',
+                                    options=[{'label': g, 'value': g} for g in group_options],
+                                    value=group_options,
+                                    multi=True,
+                                    className="dropdown-grupy"
+                                )
+                            ], className="mb-4"),
+                            html.Div([
+                                html.Label("Produkt (PLU - Nazwa):", className="form-label"),
+                                dcc.Dropdown(
+                                    id='product-dropdown',
+                                    options=[],
+                                    multi=True,
+                                    placeholder="Wybierz produkt (opcjonalnie)",
+                                    className="dropdown-produkt"
+                                )
+                            ], className="mb-4"),
+
+
+                            html.Div([
+                                html.Label("Typ transakcji B2B:", className="form-label"),
+                                dcc.Checklist(
+                                    id='b2b-checklist',
+                                    options=[
+                                        {'label': 'B2B', 'value': 'Tak'},
+                                        {'label': 'B2C', 'value': 'Nie'}
+                                    ],
+                                    value=['Tak', 'Nie'],
+                                    className="form-check"
+                                )
+                            ], className="mb-4"),
+
+                            dcc.Checklist(
+                                id='monthly-check',
+                                options=[{'label': 'Widok miesięczny według stacji', 'value': 'monthly'}],
+                                value=[],
+                                className="form-check"
+                            )
+                        ], className="filter-form")
+                    ]),
+                    className="custom-card"
+                )
+            ])
+        ], className="responsive-filter"),
+
+        html.Div(id="content-column", children=[
+            dcc.Tabs(id='tabs', value='tab1', children=[
+                dcc.Tab(label='Ogólny', value='tab1'),
+                dcc.Tab(label='Sklep', value='tab2'),
+                dcc.Tab(label='Paliwo', value='tab3'),
+                dcc.Tab(label='Lojalność', value='tab4'),
+                dcc.Tab(label='Myjnia', value='tab5'),
+                dcc.Tab(label='Ulubione', value='tab6'),
+                dcc.Tab(label='Sprzedaż per kasjer', value='tab7')
+            ]),
+            dcc.Loading(
+                id="loading-main",
+                type="circle",
+                color="#0F4C81",
+                children=html.Div(id='tabs-content', style={'marginTop': '20px'})
+            )
+        ], className="responsive-content")
+
+    ], className="dashboard-layout")
+], className="main-container", fluid=True, style={"width": "100%"})
+
+
+
+    # ---------------------------------------------
+    # Callback dla przycisków stacji
+    # ---------------------------------------------
+    @app.callback(
+        Output('station-dropdown', 'value'),
+        Input('select-all-stations', 'n_clicks'),
+        Input('deselect-all-stations', 'n_clicks'),
+        prevent_initial_call=True
+    )
+    def update_stations(select_all, deselect_all):
+        ctx = dash.callback_context
+        if not ctx.triggered:
+            return dash.no_update
+        else:
+            button_id = ctx.triggered[0]['prop_id'].split('.')[0]
+            if button_id == 'select-all-stations':
+                return station_options
+            elif button_id == 'deselect-all-stations':
+                return []
+        return dash.no_update
+
+
+
+    # ---------------------------------------------
+    # Callback dla przycisków grup towarowych
+    # ---------------------------------------------
+    @app.callback(
+        Output('group-dropdown', 'value'),
+        Input('select-all-groups', 'n_clicks'),
+        Input('deselect-all-groups', 'n_clicks'),
+        prevent_initial_call=True
+    )
+    def update_groups(select_all, deselect_all):
+        ctx = dash.callback_context
+        if not ctx.triggered:
+            return dash.no_update
+        else:
+            button_id = ctx.triggered[0]['prop_id'].split('.')[0]
+            if button_id == 'select-all-groups':
+                return group_options
+            elif button_id == 'deselect-all-groups':
+                return []
+        return dash.no_update
+    # Callback do aktualizacji listy produktów na podstawie wybranych grup towarowych
+    @app.callback(
+    Output('product-dropdown', 'options'),
+    Input('group-dropdown', 'value')
+)
+    def update_product_options(selected_groups):
+        if not selected_groups:
+            return []
+
+        df_filtered = df_cached[df_cached["Grupa towarowa"].isin(selected_groups)].copy()
+        
+        if df_filtered.empty:
+            return []
+
+        options = sorted(df_filtered["PLU_nazwa"].dropna().unique())
+
+        return [{'label': opt, 'value': opt} for opt in options]
+
+
+
+    # ---------------------------------------------
+    # Callback renderujący zawartość zakładki
+    # ---------------------------------------------
+    @app.callback(
+        Output('tabs-content', 'children'),
+        Input('tabs', 'value'),  # Fixed from 'value_1value' to 'value'
+        Input('start-date', 'date'),
+        Input('end-date', 'date'),
+
+        Input('station-dropdown', 'value'),
+        Input('group-dropdown', 'value'),
+        Input('monthly-check', 'value'),
+        Input('b2b-checklist', 'value'),
+        Input('theme-store', 'data'),
+        Input('product-dropdown', 'value')
+
+        
+
+    )
+    def render_tab_content(tab, start_date, end_date, selected_stations, selected_groups, monthly_check, selected_b2b,theme_data,selected_products):
+        theme = theme_data.get("theme", "light")
+        pio.templates.default = "corporate_dark" if theme == "dark" else "corporate_blue"
+        start_date_obj = pd.to_datetime(start_date).date()
+        end_date_obj = pd.to_datetime(end_date).date()
+
+        # Filtrowanie danych
+        dff = df[
+            (df["Data"] >= start_date_obj) &
+            (df["Data"] <= end_date_obj) &
+            (df["Stacja"].isin(selected_stations)) &
+            (df["Grupa towarowa"].isin(selected_groups)) &
+            (df["B2B"].isin(selected_b2b))  # filtr B2B
+        ].copy()
+        if selected_products:
+            dff = dff[dff["PLU_nazwa"].isin(selected_products)]
+
+
+        # Usunięcie loginu technicznego
+        dff = dff[dff["Login POS"] != 99999].copy()
+
+        # Obsługa widoku miesięcznego
+        if 'monthly' in monthly_check:
+            dff["Okres"] = pd.to_datetime(dff["Data"]).dt.to_period("M").astype(str)
+            category_col = "Stacja"
+        else:
+            dff["Okres"] = dff["Data"]
+            category_col = None
+        
+
+    # Dalej możesz robić wykresy itp. na podstawie dff
+    # return np. wykres, tabela lub komponent html
+
+        if tab == 'tab1':
+            total_netto = dff["Netto"].sum()
+            total_transactions = dff["#"].nunique()
+            kawa_netto = dff[dff["Grupa sklepowa"] == "NAPOJE GORĄCE"]["Netto"].sum()
+            food_netto = dff[dff["Grupa towarowa"].str.strip().str.upper().isin(["FOOD SERVICE", "USLUGI DODATKOWE"])][
+                "Netto"].sum()
+            myjnia_netto = dff[dff["Grupa sklepowa"] == "MYJNIA INNE"]["Netto"].sum()
+
+            grouped_netto = dff.groupby(["Okres"] + ([category_col] if category_col else []))[
+                "Netto"].sum().reset_index()
+            fig_netto = px.line(grouped_netto, x="Okres", y="Netto", color=category_col, title="Obrót netto (NFR+Fuel)",
+                                markers=True)
+
+            grouped_tx = dff.groupby(["Okres"] + ([category_col] if category_col else []))["#"].nunique().reset_index()
+            fig_tx = px.line(grouped_tx, x="Okres", y="#", color=category_col, title="Liczba transakcji", markers=True)
+
+            try:
+                start_dt = pd.to_datetime(dff["Okres"].min())
+                end_dt = pd.to_datetime(dff["Okres"].max())
+                free_days = get_free_days(start_dt, end_dt)
+                for day in free_days:
+                    fig_netto.add_vline(x=day, line_dash="dot", line_color="orange", opacity=0.2)
+                    fig_tx.add_vline(x=day, line_dash="dot", line_color="orange", opacity=0.2)
+            except Exception as e:
+                print("Błąd przy dodawaniu dni wolnych: ", e)
+
+            return html.Div(children=[
+                html.H4("Ogólny"),
+
+                html.Div([
+                    html.Div([
+                        html.Div("Obrót netto (NFR+Fuel)", className="metric-label"),
+                        html.Div(format_metric_value(total_netto, " zł"), className="metric-value")
+
+
+                    ], className="metric-card"),
+
+                    html.Div([
+                        html.Div("Ilość transakcji", className="metric-label"),
+                        html.Div(format_metric_value(total_transactions), className="metric-value")
+
+                    ], className="metric-card"),
+
+                    html.Div([
+                        html.Div("Sprzedaż kawy", className="metric-label"),
+                        html.Div(format_metric_value(kawa_netto, " zł"), className="metric-value")
+                    ], className="metric-card"),
+
+                    html.Div([
+                        html.Div("Sprzedaż food", className="metric-label"),
+                        html.Div(format_metric_value(food_netto, " zł"), className="metric-value")
+                    ], className="metric-card"),
+
+                    html.Div([
+                        html.Div("Sprzedaż myjni", className="metric-label"),
+                        html.Div(format_metric_value(myjnia_netto, " zł"), className="metric-value")
+                    ], className="metric-card"),
+                ], className="metric-container"),
+
+                dcc.Graph(className="custom-graph", figure=fig_netto),
+                dcc.Graph(className="custom-graph", figure=fig_tx),
+
+                html.H4("Heatmapa"),
+                dcc.RadioItems(
+                    id='metric-selector',
+                    options=[
+                        {'label': "Liczba transakcji", 'value': "tx"},
+                        {'label': "Obrót netto", 'value': "netto"},
+                        {'label': "Liczba sztuk", 'value': "ilosc"},
+                        {'label': "Transakcje paliwowe", 'value': "paliwo"},
+                        {'label': "Penetracja lojalnościowa", 'value': "lojalnosc"}
+                    ],
+                    value="tx",
+                    labelStyle={'display': 'inline-block', 'marginRight': '15px'}
+                ),
+                dcc.Graph(className="custom-graph", id='heatmap-graph')
+            ])
+
+
+
+
+        elif tab == 'tab2':
+
+            netto_bez_hois0 = dff[dff["HOIS"] != 0]["Netto"].sum()
+
+            unikalne_transakcje = dff["#"].nunique()
+
+            avg_transaction = netto_bez_hois0 / unikalne_transakcje if unikalne_transakcje > 0 else 0
+
+            netto_shop_df = dff[dff["HOIS"] != 0].groupby(["Okres"] + ([category_col] if category_col else []))[
+                "Netto"].sum().reset_index()
+
+            fig_shop_netto = px.line(netto_shop_df, x="Okres", y="Netto", color=category_col,
+
+                                     title="Obrót sklepowy netto (bez paliwa)", markers=True)
+
+            netto_bez_hois0_mies = dff[dff["HOIS"] != 0].groupby("Okres")["Netto"].sum()
+
+            transakcje_all_mies = dff.groupby("Okres")["#"].nunique()
+
+            avg_mies_df = pd.concat([netto_bez_hois0_mies, transakcje_all_mies], axis=1).reset_index()
+
+            avg_mies_df.columns = ["Okres", "Netto_bez_HOIS0", "Transakcje_all"]
+
+            avg_mies_df["Srednia"] = avg_mies_df["Netto_bez_HOIS0"] / avg_mies_df["Transakcje_all"]
+
+            fig_avg_tx = px.line(avg_mies_df, x="Okres", y="Srednia", title="Średnia wartość transakcji", markers=True)
+
+            try:
+
+                start_dt = pd.to_datetime(dff["Okres"].min())
+
+                end_dt = pd.to_datetime(dff["Okres"].max())
+
+                free_days = get_free_days(start_dt, end_dt)
+
+                for day in free_days:
+                    fig_shop_netto.add_vline(x=day, line_dash="dot", line_color="orange", opacity=0.2)
+
+                    fig_avg_tx.add_vline(x=day, line_dash="dot", line_color="orange", opacity=0.2)
+
+            except Exception as e:
+
+                print("Błąd przy dodawaniu dni wolnych: ", e)
+
+            df_nonzero_hois = dff[dff["HOIS"] != 0].copy()
+
+            excluded_products = [
+
+                "myjnia jet zafiskalizowana",
+
+                "opłata opak. kubek 0,25zł",
+
+                "myjnia jet żeton"
+
+            ]
+
+            top_products = df_nonzero_hois[
+
+                ~df_nonzero_hois["Nazwa produktu"].str.lower().str.strip().isin(excluded_products)]
+
+            top_products = top_products.groupby("Nazwa produktu")["Ilość"].sum().reset_index()
+
+            top_products = top_products.sort_values(by="Ilość", ascending=False).head(10)
+
+            fig_top_products = None
+
+            if not top_products.empty:
+                fig_top_products = px.bar(top_products, x="Nazwa produktu", y="Ilość",
+
+                                          title="Top 10 najlepiej sprzedających się produktów (bez paliwa)")
+
+            fig_station_avg = None
+
+            if category_col == "Stacja":
+
+                netto_bez_hois0_stacje = dff[dff["HOIS"] != 0].groupby(["Okres", "Stacja"])["Netto"].sum()
+
+                transakcje_all_stacje = dff.groupby(["Okres", "Stacja"])["#"].nunique()
+
+                avg_mies_stacje_df = pd.concat([netto_bez_hois0_stacje, transakcje_all_stacje], axis=1).reset_index()
+
+                avg_mies_stacje_df.columns = ["Okres", "Stacja", "Netto_bez_HOIS0", "Transakcje_all"]
+
+                avg_mies_stacje_df["Srednia"] = avg_mies_stacje_df["Netto_bez_HOIS0"] / avg_mies_stacje_df[
+                    "Transakcje_all"]
+
+                fig_station_avg = px.line(avg_mies_stacje_df, x="Okres", y="Srednia", color="Stacja",
+
+                                          title="Średnia wartość transakcji per stacja", markers=True)
+
+                try:
+
+                    for day in free_days:
+                        fig_station_avg.add_vline(x=day, line_dash="dot", line_color="orange", opacity=0.2)
+
+                except:
+
+                    pass
+
+            content = [
+
+                html.H4("Sklep"),
+
+                html.Div([
+                    html.Div([
+                        html.Div("Obrót sklepowy netto", className="metric-label"),
+                        html.Div(format_metric_value(netto_bez_hois0, " zł"), className="metric-value")
+
+                    ], className="metric-card"),
+
+                    html.Div([
+                        html.Div("Średnia wartość transakcji", className="metric-label"),
+                        html.Div(format_metric_value(avg_transaction, " zł"), className="metric-value")
+
+                    ], className="metric-card"),
+                ], className="metric-container"),
+
+                dcc.Graph(className="custom-graph", figure=fig_shop_netto),
+
+                dcc.Graph(className="custom-graph", figure=fig_avg_tx),
+            ]
+
+            if fig_station_avg:
+                content.append(dcc.Graph(className="custom-graph", figure=fig_station_avg))
+
+            if fig_top_products:
+
+                content.append(dcc.Graph(className="custom-graph", figure=fig_top_products))
+
+            else:
+
+                content.append(html.Div("Brak danych do wygenerowania wykresu TOP 10.",
+
+                                        style={'color': 'gray', 'fontStyle': 'italic'}))
+
+            import plotly.graph_objects as go
+
+            pareto_df = df_nonzero_hois[
+
+                ~df_nonzero_hois["Nazwa produktu"].str.lower().str.strip().isin(excluded_products)
+
+            ].copy()
+
+            pareto_df = pareto_df.groupby("Nazwa produktu")["Netto"].sum().reset_index()
+
+            pareto_df = pareto_df.sort_values(by="Netto", ascending=False).head(30)
+
+            pareto_df["Kumulacja"] = pareto_df["Netto"].cumsum() / pareto_df["Netto"].sum() * 100
+
+            pareto_cutoff = pareto_df[pareto_df["Kumulacja"] <= 80].shape[0]
+
+            pareto_df["Kolor"] = ["#0F4C81" if i < pareto_cutoff else "#B0BEC5" for i in range(len(pareto_df))]
+
+            fig_pareto = go.Figure()
+
+            fig_pareto.add_bar(
+
+                x=pareto_df["Nazwa produktu"],
+
+                y=pareto_df["Netto"],
+
+                marker_color=pareto_df["Kolor"],
+
+                name="Sprzedaż (netto)",
+
+                yaxis="y1",
+
+                hovertemplate='Produkt: %{x}<br>Netto: %{y:.2f} zł'
+
+            )
+
+            fig_pareto.add_trace(go.Scatter(
+
+                x=pareto_df["Nazwa produktu"],
+
+                y=pareto_df["Kumulacja"],
+
+                name="Kumulacja (%)",
+
+                yaxis="y2",
+
+                mode="lines+markers",
+
+                hovertemplate='Produkt: %{x}<br>Kumulacja: %{y:.2f}%'
+
+            ))
+
+                    # Dopasowanie koloru tekstu do trybu
+            text_color = "#000000" if theme != "dark" else "gray"
+
+            if pareto_cutoff < len(pareto_df):
+                content.append(html.Div(
+                    f"Granica 80% kumulacji: {pareto_df['Nazwa produktu'].iloc[pareto_cutoff]}",
+                    style={
+                        "color": text_color,
+                        "fontWeight": "bold",
+                        "marginBottom": "10px"
+                    }
+                ))
+            fig_pareto.update_layout(
+
+                title="Wykres Pareto produktów (bez HOIS 0, wg wartości netto)",
+
+                xaxis=dict(title="Nazwa produktu", tickangle=45, tickfont=dict(size=10)),
+
+                yaxis=dict(title="Netto (zł)", side="left"),
+
+                yaxis2=dict(title="Kumulacja (%)", overlaying="y", side="right", range=[0, 110]),
+
+                legend=dict(x=0.85, y=1.15),
+
+                margin=dict(t=80)
+
+            )
+
+            content.append(dcc.Graph(className="custom-graph", figure=fig_pareto))
+
+            return html.Div(content)
+
+            
+        elif tab == 'tab3':
+            global df_cached, hois_cached
+            df_all = df_cached.copy()
+
+            # Dodaj brakujące kolumny
+            df_all["Grupa towarowa"] = df_all["HOIS"].map(lambda x: hois_cached.get(x, ("Nieznana", "Nieznana"))[0])
+            df_all["Grupa sklepowa"] = df_all["HOIS"].map(lambda x: hois_cached.get(x, ("Nieznana", "Nieznana"))[1])
+
+            # Dodaj "Okres"
+            if 'monthly' in monthly_check:
+                df_all["Okres"] = pd.to_datetime(df_all["Data"]).dt.to_period("M").astype(str)
+                category_col = "Stacja"
+            else:
+                df_all["Okres"] = df_all["Data"]
+                category_col = None
+
+            # Filtrowanie tylko PALIWO
+            fuel_df = df_all[
+                (df_all["Data"] >= start_date_obj) &
+                (df_all["Data"] <= end_date_obj) &
+                (df_all["Stacja"].isin(selected_stations)) &
+                (df_all["Grupa towarowa"].isin(selected_groups)) &
+                (df_all["Grupa sklepowa"] == "PALIWO") &
+                (df_all["B2B"].isin(selected_b2b)) &
+                (df_all["Login POS"] != 99999)
+            ].copy()
+
     
 
-}
-
-
-
-/* ====== STYL DLA DCC.Tabs ====== */
-/* Zakładki Dash z nowym stylowaniem */
-.tab {
-    background-color: white;
-    color: #333;
-    padding: 8px 16px;
-    border: 1px solid #e0e0e0;
-    border-bottom: none;
-    border-radius: 8px 8px 0 0;
-    font-weight: 500;
-    font-size: 14px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex: 1 1 0;           
-    min-width: 0;          
-    max-width: none;       
-    height: auto;
-    line-height: 1.3;
-    text-align: center;
-    text-wrap: wrap;
-    white-space: normal;
-    transition: background-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
-}
-
-.tab:hover {
-    background-color: #BFD7EA;
-    box-shadow: 0 3px 6px rgba(0,0,0,0.06);
-}
-
-.tab--selected {
-    background-color: #0F4C81;
-    color: white;
-    font-weight: 600;
-    border: 1px solid #1D3557;
-    border-bottom: none;
-    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.08);
-}
-
-/* Pasek pod zakładkami */
-.dash-tabs {
-    border-bottom: 1px solid #d6d6d6;
-    margin-bottom: 10px;
-    display: flex;
-    align-items: center;
-}
-
-
-
-
-
-/* ====== DATAPICKER ====== */
-
-.datepicker-wrapper {
-    position: relative;
-}
-
-.datepicker-wrapper i.fa-calendar {
-    position: absolute;
-    right: 12px;
-    top: 50%;
-    transform: translateY(-50%);
-    color: #457B9D;
-    pointer-events: none;
-    font-size: 18px;
-}
-
-.DateRangePickerInput {
-    position: relative;
-    display: flex;
-    border: 1px solid #ccc !important;
-    border-radius: 6px !important;
-    background-color: white !important;
-    justify-content: center;
-    align-items: center;
-    gap: 6px;
-
-}
-.DateRangePickerInput:after {
-    content: "–";
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    font-weight: 600;
-    color: #444;
-    font-size: 16px;
-    pointer-events: none;
-    z-index: 2;
-}
-
-.DateInput_input {
-    border: none !important;
-    box-shadow: none !important;
-    font-size: 14px;
-    padding: 10px 12px;
-    background-color: white !important;
-}
-
-/* ====== KOLAPS FILTRÓW ====== */
-
-.filter-toggle {
-    cursor: pointer;
-    font-weight: 600;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 10px 0;
-    font-size: 16px;
-    border-top: 1px solid #eee;
-    border-bottom: 1px solid #eee;
-}
-
-.filter-toggle i {
-    transition: transform 0.3s ease;
-}
-
-.filter-toggle.collapsed i {
-    transform: rotate(-90deg);
-}
-
-.filter-collapse {
-    transition: max-height 0.3s ease-out;
-    overflow: hidden;
-}
-
-/* ====== WIZUALNE INFO O ZAPISANYCH FILTRACH ====== */
-
-
-
-/* ====== MARGINS & SPACING ====== */
-
-.mb-2 { margin-bottom: 0.5rem !important; }
-.mb-3 { margin-bottom: 1rem !important; }
-.mb-4 { margin-bottom: 1.5rem !important; }
-.me-2 { margin-right: 0.5rem !important; }
-/* === ANIMACJA POKAZYWANIA PANELU FILTRÓW === */
-
-#filter-panel {
-    overflow: hidden;
-    transition: max-height 0.4s ease, padding 0.4s ease, opacity 0.4s ease;
-    opacity: 1;
-    padding-top: 10px;
-    padding-bottom: 10px;
-}
-
-#filter-panel.hidden {
-    max-height: 0;
-    padding-top: 0;
-    padding-bottom: 0;
-    opacity: 0;
-    pointer-events: none;
-}
-
-.metric-container {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 20px;
-    margin-bottom: 30px;
-}
-
-.metric-card {
-    flex: 1 1 220px;
-    background: linear-gradient(135deg, #ffffff, #f0f6fb);
-    border: 1px solid #f0f6fb;
-    border-radius: 10px;
-    padding: 20px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.03);
-    transition: box-shadow 0.2s ease;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    height: 100px;
-}
-
-.metric-card:hover {
-    box-shadow: 0 4px 14px rgba(0,0,0,0.06);
-}
-
-.metric-label {
-    font-size: 13px;
-    color: #0F4C81;
-    margin-bottom: 4px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-.metric-value {
-    font-size: 24px;
-    font-weight: 700;
-    color: #1D3557;
-}
-
-.metric-delta {
-    font-size: 14px;
-    font-weight: 600;
-    margin-top: 4px;
-}
-
-.metric-delta.positive {
-    color: #2e7d32; /* zielony */
-}
-
-.metric-delta.negative {
-    color: #c62828; /* czerwony */
-}
-
-.metric-delta.neutral {
-    color: #457B9D; /* szary */
-}
-.loyalty-table-container {
-    margin-top: 30px;
-    margin-bottom: 40px;
-}
-
-.loyalty-table-title {
-    font-size: 16px;
-    font-weight: 700;
-    margin-bottom: 10px;
-    color: #333;
-}
-
-.loyalty-datatable {
-    font-family: 'Open Sans', sans-serif;
-    font-size: 14px;
-    background-color: white;
-    border-radius: 8px;
-    overflow: hidden;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.04);
-}
-
-.loyalty-datatable .dash-header {
-    font-weight: bold;
-    background-color: #E9F5FB;
-    border-bottom: 2px solid #A8DADC;
-}
-
-.loyalty-datatable .dash-cell {
-    padding: 10px;
-    border: none;
-}
-
-.loyalty-datatable .dash-cell.column-1 {
-    text-align: right;
-    font-weight: 600;
-}
-
-.loyalty-datatable .dash-cell.column-0 {
-    text-align: left;
-}
-
-.dash-table-container .dash-spreadsheet-container .dash-table {
-    border: none;
-}
-.fully-hidden {
-    display: none !important;
-}
-.dashboard-layout {
-    display: flex;
-    flex-direction: row;
-    width: 100% !important;
-    gap: 10px;
-    align-items: flex-start;
-}
-
-
-
-.responsive-filter {
-    width: 25%;
-    padding-right: 20px;
-    transition: all 0.3s ease;
-}
-
-.responsive-content {
-    width: 75%;
-    transition: all 0.3s ease;
-}
-
-/* Po ukryciu filtrów */
-#filter-panel.hidden + .responsive-content,
-.responsive-filter.hidden {
-    display: none !important;
-}
-
-.responsive-content.expanded {
-    width: 100% !important;
-}
-.dropdown-grupy .Select__multi-value {
-    background-color: #000000 !important;
-    color: white !important;
-}
-
-/* Ewentualne inne dropdowny */
-.dropdown-stacje .Select__multi-value {
-    background-color: #2a9d8f !important;
-    color: white !important;
-}
-/* Styluje tagi wybranych wartości w dropdownie grup towarowych */
-.dropdown-grupy div[class*='multiValue'] {
-    background-color: #0F4C81 !important;
-    color: white !important;
-    font-weight: 600;
-    border-radius: 4px;
-    padding: 4px 6px;
-    font-size: 13px;
-    margin: 3px;
-    display: inline-flex;
-    align-items: center;
-    box-shadow: 0 0 0 2px rgba(15, 76, 129, 0.2);
-}
-
-
-/* Styl tagów w dropdownie stacji */
-
-
-
-.dropdown-stacje div[class*="multi-value"] {
-    background-color: #ffffff !important;
-}
-
-.dropdown-stacje .Select-value {
-    background-color: #F1FAFB !important;
-    color: #1D3557 !important;
-    border-color:#F1FAFB !important ;
-
-}
-
-.dropdown-grupy .Select-value {
-    background-color: #F1FAFB !important;
-    color: #1D3557 !important;
-    border-color:#F1FAFB !important ;
-
-}
-.dropdown-grupy div[class*="multi-value"] {
-    background-color: #ffffff !important;
-}
-.dash-dropdown {
-    background-color: transparent !important;
-}
-.sticky-header {
-    position: sticky;
-    top: 0;
-    z-index: 999;
-    background-color: #ffffff;
-    padding-top: 10px;
-    padding-bottom: 10px;
-    border-bottom: 1px solid #e0e0e0;
-    transition: background-color 0.3s ease;
-}
-.DateRangePickerInput_arrow,
-.DateRangePickerInput_arrow svg {
-    display: none !important;
-}
-.date-range-custom {
-    display: flex;
-    gap: 20px;
-}
-
-.date-column {
-    display: flex;
-    flex-direction: column;
-    flex: 1;
-}
-
-.date-label {
-    font-weight: 600;
-    font-size: 13px;
-    margin-bottom: 4px;
-    color: #333;
-}
-.DateRangePicker,
-.DateRangePicker_picker,
-.DateInput,
-.SingleDatePicker_picker {
-    z-index: 2000 !important;
-}
-
-/* Poprawka dla kontenera filtra, jeśli ma ograniczenia */
-#filter-panel,
-#filter-column {
-    overflow-y: auto !important;
-    overflow-x: visible !important;
-}
-#filter-panel {
-    max-height: none !important;
-    overflow: visible !important;
-}
-
-/* Nadpisanie ograniczeń kontenera */
-.dash-bootstrap .row,
-.dash-bootstrap .col,
-.custom-card {
-    overflow: visible !important;
-}
-
-.sticky-header {
-    z-index: 100;
-}
-#filter-panel {
-    overflow: visible !important;
-    position: relative !important;
-    z-index: 1;
-}
-/* Dla całej kolumny filtrów – zostaje sticky */
-#filter-column {
-    position: sticky !important;
-    top: 80px; /* lub ile potrzebujesz */
-    z-index: 10;
-    height: calc(100vh - 100px); /* jak masz w kodzie */
-    overflow-y: auto;
-    overflow-x: visible;
-}
-
-/* Dla komponentu DatePicker (np. Dash lub React-Datepicker) */
-.SingleDatePicker_picker {
-    left: 50% !important;
-    transform: translateX(-50%) !important;
-    z-index: 9999 !important;
-}
-.DateRangePicker_picker {
-    left: 50% !important;
-    transform: translateX(-50%) !important;
-    z-index: 9999 !important;
-}
-.SingleDatePicker_picker,
-.DateRangePicker_picker {
-    max-width: 90vw;
-    width: auto;
-}
-
-/*CIEMNY MOTYW !!!*/
-body.dark .date-label {
-    color: #f1f1f1;
-}
-body.dark .sticky-header {
-    background-color: #1e1e1e;
-    border-bottom: 1px solid #444;
-}
-
-body.dark {
-    background-color: #212121;
-    color: #f1f1f1;
-    transition: background-color 0.5s, color 0.5s;
-}
-
-body.dark .metric-card {
-    background-color: #1f1f1f;
-    border: 1px solid #333;
-    color: #eee;
-}
-
-body.dark .custom-graph {
-    background-color: #1c1c1c !important;
-}
-/* ====== CIEMNY MOTYW – ROZSZERZENIE ====== */
-
-body.dark .main-container,
-body.dark .custom-card,
-
-body.dark .DateInput_input,
-body.dark .form-control-wrapper,
-body.dark .dropdown-stacje .Select__multi-value,
-body.dark .dropdown-grupy .Select__multi-value,
-body.dark .Select__menu {
-    background-color: #1e1e1e !important;
-    color: #f1f1f1 !important;
-    border-color: #333 !important;
-}
-body.dark .DateRangePickerInput{
-    background-color: #2c2c2c !important;
-    color: #f1f1f1 !important;
-    border-color: #333 !important;
-}
-
-
-body.dark .card-title,
-body.dark .filter-form label,
-body.dark .filter-form .form-label,
-body.dark .loyalty-table-title {
-    color: #e0e0e0 !important;
-}
-
-body.dark .metric-label {
-    color: #74C0FC !important;
-}
-
-body.dark .metric-value {
-    color: #f1f1f1;
-}
-
-body.dark .metric-delta.positive {
-    color: #66bb6a;
-}
-
-body.dark .metric-delta.negative {
-    color: #ef5350;
-}
-
-body.dark .metric-delta.neutral {
-    color: #BFD7EA;
-}
-
-body.dark .btn-primary {
-    background-color: #0F4C81 !important;
-    border-color: #0F4C81 !important;
-    color: white !important;
-}
-
-body.dark .btn-secondary {
-    background-color: #2A9D8F !important;
-    border-color: #2A9D8F !important;
-    color: white !important;
-}
-
-body.dark .btn-primary:hover {
-    background-color: #1D3557 !important;
-}
-
-body.dark .btn-secondary:hover {
-    background-color: #1D3557 !important;
-}
-
-body.dark .filter-form .form-control,
-body.dark .filter-form .form-control-wrapper,
-body.dark .filter-form input,
-body.dark .Select__multi-value {
-    background-color: #2c2c2c !important;
-    color: #f1f1f1 !important;
-}
-
-body.dark .form-control .Select__multi-value__remove {
-    color: #f1f1f1 !important;
-}
-
-body.dark .form-control .Select__multi-value__remove:hover {
-    color: #FFD700 !important;
-}
-
-body.dark .Select__menu {
-    background-color: #2c2c2c !important;
-}
-
-body.dark .tab {
-    background-color: #2c2c2c !important;
-    color: #f1f1f1 !important;
-    border-color: #444 !important;
-}
-
-body.dark .tab--selected {
-    background-color: #0F4C81 !important;
-    color: #fff !important;
-    border-color: #1D3557 !important;
-}
-
-body.dark .datepicker-wrapper i.fa-calendar {
-    color: #A8DADC;
-}
-
-body.dark .loyalty-datatable {
-    background-color: #1f1f1f;
-    color: #eee;
-    box-shadow: 0 2px 8px rgba(255, 255, 255, 0.05);
-}
-
-body.dark .loyalty-datatable .dash-header {
-    background-color: #333;
-    border-bottom: 2px solid #444;
-    color: #f1f1f1;
-}
-
-body.dark .loyalty-datatable .dash-cell {
-    color: #f1f1f1;
-}
-
-body.dark .Select__multi-value {
-    background-color: #0F4C81 !important;
-    color: white !important;
-    box-shadow: 0 0 0 2px rgba(15, 76, 129, 0.3);
-}
-
-body.dark .tab:hover {
-    background-color: #444;
-}
-
-body.dark .dashboard-layout,
-body.dark .responsive-filter,
-body.dark .responsive-content {
-    background-color: #1e1e1e;
-}
-/* ====== CIEMNY MOTYW – metric cards ====== */
-body.dark .metric-card {
-    background: linear-gradient(135deg, #1e1e1e, #2c2c2c);
-    border: 1px solid #333;
-    color: #eee;
-    box-shadow: 0 2px 8px rgba(255, 255, 255, 0.04);
-}
-
-body.dark .metric-card:hover {
-    box-shadow: 0 4px 14px rgba(255, 255, 255, 0.08);
-}
-
-body.dark .metric-label {
-    color: #74C0FC;
-}
-
-body.dark .metric-value {
-    color: #f1f1f1;
-}
-
-/* ====== CIEMNY MOTYW – datatable (loyalty) ====== */
-body.dark .loyalty-datatable {
-    background-color: #1e1e1e;
-    color: #eee;
-    box-shadow: 0 2px 6px rgba(255, 255, 255, 0.05);
-}
-
-body.dark .loyalty-datatable .dash-header {
-    background-color: #2c2c2c;
-    border-bottom: 2px solid #444;
-    color: #f1f1f1;
-}
-
-body.dark .loyalty-datatable .dash-cell {
-    background-color: transparent;
-    color: #f1f1f1;
-}
-
-body.dark .loyalty-datatable .dash-cell.column-1 {
-    color: #74C0FC;
-}
-
-body.dark .loyalty-datatable .dash-cell.column-0 {
-    color: #f1f1f1;
-}
-
-body.dark .loyalty-table-title {
-    color: #e0e0e0;
-}
-/* === CIEMNY MOTYW — dropdown: STACJE === */
-body.dark .dropdown-stacje div[class*="multi-value"] {
-    background-color: #2c2c2c !important;
-    color: #BFD7EA !important;
-    border-radius: 6px;
-    border: 1px solid #444;
-}
-
-body.dark .dropdown-stacje .Select-value {
-    background-color: #2c2c2c !important;
-    color: #BFD7EA !important;
-    border-color: #2c2c2c !important;
-}
-
-/* === CIEMNY MOTYW — dropdown: GRUPY === */
-body.dark .dropdown-grupy div[class*="multi-value"] {
-    background-color: #2c2c2c !important;
-    color: #BFD7EA !important;
-    border-radius: 6px;
-    border: 1px solid #444;
-}
-
-body.dark .dropdown-grupy .Select-value {
-    background-color: #2c2c2c !important;
-    color: #BFD7EA !important;
-    border-color: #2c2c2c !important;
-}
-/* Główna ramka dropdowna */
-body.dark .dropdown-stacje .Select__control {
-    background-color: #2c2c2c !important;
-    border: 1px solid #444 !important;
-    border-radius: 8px !important;
-    box-shadow: none !important;
-}
-
-/* Kontener na wartości */
-body.dark .dropdown-stacje .Select__value-container {
-    background-color: #2c2c2c !important;
-    color: #BFD7EA !important;
-    border-radius: ;
-}
-
-/* Cały kontener dropdowna (zewnętrzny wrapper) */
-body.dark .dropdown-stacje {
-    background-color: #2c2c2c !important;
-    border-radius: 8px !important;
-    bi
-}
-
-/* === CIEMNY MOTYW: POPRAWKA WSZYSTKICH ELEMENTÓW DROPDOWNA === */
-
-body.dark .Select,
-body.dark .Select-control,
-body.dark .Select-menu,
-body.dark .Select-menu-outer,
-body.dark .Select-placeholder,
-body.dark .Select-value,
-body.dark .Select-value-label,
-body.dark .Select-clear-zone,
-body.dark .Select-arrow-zone,
-body.dark .Select-input,
-body.dark .Select-input > input {
-    background-color: #2c2c2c !important;
-    color: #BFD7EA !important;
-    border: none !important;
-    box-shadow: none !important;
-}
-/* === CIEMNY MOTYW – dash datatable ogólnie === */
-body.dark .dash-table-container .dash-spreadsheet-container .dash-table {
-    background-color: #1e1e1e !important;
-    color: #f1f1f1 !important;
-    border: none !important;
-}
-
-/* Komórki */
-body.dark .dash-cell {
-    background-color: transparent !important;
-    color: #f1f1f1 !important;
-    opacity: 1 !important;
-}
-
-/* Nagłówki */
-body.dark .dash-header {
-    background-color: #2a2a2a !important;
-    color: #BFD7EA !important;
-    font-weight: 700 !important;
-    border-bottom: 2px solid #444 !important;
-}
-
-/* Kolor niebieskich wartości (jeśli chcesz je wyróżnić) */
-body.dark .dash-cell a {
-    color: #4dabf7 !important;
-    font-weight: 600;
-}
-
-/* Alternatywne tło dla wierszy (opcjonalnie) */
-body.dark .dash-row:nth-child(even) .dash-cell {
-    background-color: #1a1a1a !important;
-}
-
-
-/* Zaokrąglenie i wyrównanie ramki dropdowna */
-body.dark .Select-control {
-    border-radius: 8px !important;
-    border: 1px solid #444 !important;
-}
-
-/* Strzałka i przycisk '×' po prawej */
-body.dark .Select-clear-zone,
-body.dark .Select-arrow-zone {
-    color: #BFD7EA !important;
-}
-body.dark .DateRangePickerInput_arrow svg {
-    display: none !important;
-    fill: #A8DADC !important;  /* Jasny kolor dla strzałki */
-}
-/* Zmiana koloru strzałki przy najechaniu */
-body.dark .DateRangePickerInput_arrow svg:hover {
-    display: none !important;
-    fill: #74C0FC !important;  /* Zmieniamy na złoty przy najechaniu */
-}
-/* Input tekstowy wewnątrz (np. filtr) */
-body.dark .Select-input > input {
-    color: #BFD7EA !important;
-}
-
-
-/* ====== RESPONSYWNOŚĆ ====== */
-
-@media screen and (max-width: 992px) {
-    .main-container {
-        padding: 15px;
-    }
-
-    .metric-container {
-        flex-direction: column;
-        gap: 15px;
-    }
-
-    .metric-card {
-        width: 100%;
-        height: auto;
-    }
-
-    .custom-card,
-    .custom-graph,
-    .filter-form {
-        padding: 15px;
-        margin-bottom: 20px;
-    }
-
-    .tab {
-        font-size: 13px;
-        padding: 6px 10px;
-    }
-
-    .btn-primary,
-    .btn-secondary {
-        width: 100%;
-        margin-bottom: 10px;
-    }
-
-    .filter-toggle {
-        font-size: 14px;
-        padding: 8px 0;
-    }
-
-    .loyalty-table-container {
-        overflow-x: auto;
-    }
-
-    .loyalty-datatable {
-        min-width: 600px;
-    }
-    .metric-container {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 10px;
-        justify-content: space-between;
-    }
-    .metric-card {
-        flex: 0 0 48%;
-        height: auto;
-        padding: 12px 10px;
-        border-radius: 8px;
-    }
-
-    .metric-label {
-        font-size: 11px;
-        margin-bottom: 4px;
-    }
-
-    .metric-value {
-        font-size: 16px;
-        font-weight: 700;
-    }
-
-    .metric-delta {
-        font-size: 12px;
-    }
-    .custom-graph {
-        width: 100% !important;
-        margin-bottom: 20px;
-    }
-
-    .graph-row {
-        display: flex !important;
-        flex-direction: column !important;
-        flex-wrap: nowrap !important;
-    }
-
-    .graph-row > .custom-graph {
-        width: 100% !important;
-    }
+
+            if fuel_df.empty:
+                return html.Div(children=[
+                    html.H3("Sprzedaż paliwa"),
+                    html.P("Brak danych paliwowych dla wybranych filtrów.")
+                ])
+            
+            
+
+            # METRYKI
+            fuel_liters = fuel_df["Ilość"].sum()
+            fuel_tx = fuel_df["#"].nunique()
+            avg_liters_per_tx = fuel_liters / fuel_tx if fuel_tx != 0 else 0
+
+            # Oblicz penetrację V-Power
+            vpower_keywords = ["V-POWER", "VPOWER"]
+            vpower_df = fuel_df[fuel_df["Nazwa produktu"].str.upper().str.contains("|".join(vpower_keywords))]
+            vpower_liters = vpower_df["Ilość"].sum()
+
+            # Odfiltruj AdBlue
+            non_adblue_df = fuel_df[~fuel_df["Nazwa produktu"].str.upper().str.contains("ADBLUE")]
+            non_adblue_liters = non_adblue_df["Ilość"].sum()
+
+            penetracja_vpower = (vpower_liters / non_adblue_liters * 100) if non_adblue_liters else 0
+
+
+            metrics = html.Div(className="metric-container", children=[
+                generate_metric_card("Ilość litrów", format_metric_value(fuel_liters, " l")),
+                generate_metric_card("Liczba transakcji paliwowych", format_metric_value(fuel_tx)),
+                generate_metric_card("Penetracja V-Power", f"{penetracja_vpower:.1f}%"),
+                generate_metric_card("Śr. litry / transakcja", f"{avg_liters_per_tx:.2f} l"),
+            ])
+
+            # Wykres sprzedaży paliwa
+            fuel_sales_grouped = fuel_df.groupby(["Okres"] + ([category_col] if category_col else []))["Ilość"].sum().reset_index()
+            fig_fuel_sales = px.line(fuel_sales_grouped, x="Okres", y="Ilość", color=category_col,
+                                    title="Sprzedaż paliw", markers=True)
+
+            # Potencjał flotowy
+            non_b2b_invoice = fuel_df[(fuel_df["B2B"] != "TAK") & (fuel_df["Dokument"].str.upper() == "FAKTURA")]
+            flota_data = pd.DataFrame({
+                "Typ": ["Potencjalni klienci flotowi", "Pozostali klienci"],
+                "Liczba": [len(non_b2b_invoice), len(fuel_df) - len(non_b2b_invoice)]
+            })
+            fig_flota = px.pie(flota_data, names="Typ", values="Liczba",
+                            title="Potencjał B2B", hole=0.4)
+            fig_flota.update_traces(textposition='inside', textinfo='percent+label')
+
+            # Analiza transakcji: paliwo vs paliwo + sklep
+            all_tx = df_all[
+                (df_all["Data"] >= start_date_obj) &
+                (df_all["Data"] <= end_date_obj) &
+                (df_all["Stacja"].isin(selected_stations)) &
+                (df_all["Grupa towarowa"].isin(selected_groups)) &
+                (df_all["Login POS"] != 99999)
+            ][["#", "HOIS"]].copy()
+
+            tx_agg = all_tx.groupby("#")["HOIS"].agg(['min', 'max']).reset_index()
+            tx_agg["Typ"] = tx_agg.apply(lambda row: "Tylko paliwo" if row["min"] == 0 and row["max"] == 0 else "Paliwo + sklep", axis=1)
+            tx_summary = tx_agg["Typ"].value_counts().reset_index()
+            tx_summary.columns = ["Typ", "Liczba"]
+
+
+            fig_mix = px.pie(tx_summary, names="Typ", values="Liczba",
+                            title="Tylko paliwo vs paliwo + sklep", hole=0.4)
+            fig_mix.update_traces(textposition='inside', textinfo='percent+label')
+
+            # B2B / B2C
+            fuel_df["Typ klienta"] = fuel_df["B2B"].apply(lambda x: "B2B" if str(x).upper() == "TAK" else "B2C")
+            customer_types = fuel_df.groupby("Typ klienta")["Ilość"].sum().reset_index()
+            fig_customer_types = px.pie(customer_types, values="Ilość", names="Typ klienta",
+                                        title="Stosunek tankowań B2C do B2B", hole=0.4)
+            fig_customer_types.update_traces(textposition='inside', textinfo='percent+label')
+
+            # Udział produktów paliwowych
+            fuel_sales = fuel_df.groupby("Nazwa produktu")["Ilość"].sum().nlargest(10).reset_index()
+            fig_fuel_products = px.pie(fuel_sales, names="Nazwa produktu", values="Ilość",
+                                    title="Udział paliw", hole=0.4)
+
+            # Dni wolne
+            try:
+                start_dt = pd.to_datetime(fuel_df["Okres"].min())
+                end_dt = pd.to_datetime(fuel_df["Okres"].max())
+                free_days = get_free_days(start_dt, end_dt)
+                for day in free_days:
+                    fig_fuel_sales.add_vline(x=day, line_dash="dot", line_color="orange", opacity=0.2)
+            except Exception as e:
+                print("Błąd przy dodawaniu dni wolnych: ", e)
+
+            return html.Div(children=[
+                html.H4("Paliwo"),
+                metrics,
+
+                html.H4("Sprzedaż paliw"),
+                dbc.Row([
+                    dbc.Col(dcc.Graph(className="custom-graph", figure=fig_fuel_sales), width=12)
+                ]),
+
+                
+                dbc.Row([
+                    dbc.Col(dcc.Graph(className="custom-graph", figure=fig_flota), xs=12, md=6),
+                    dbc.Col(dcc.Graph(className="custom-graph", figure=fig_mix),xs=12, md=6)
+                ], className="graph-row"),
+
+                dbc.Row([
+                    dbc.Col(dcc.Graph(className="custom-graph", figure=fig_customer_types), xs=12, md=6),
+                    dbc.Col(dcc.Graph(className="custom-graph", figure=fig_fuel_products), xs=12, md=6)
+                ], className="graph-row")
+            ])
+
+
+
+
+        elif tab == 'tab4':
+            start_date_current = pd.to_datetime(start_date)
+            end_date_current = pd.to_datetime(end_date)
+
+            df_loyal_current = dff[
+                (dff["Karta lojalnościowa"].str.upper() == "TAK") &
+                (pd.to_datetime(dff["Data"]) >= start_date_current) &
+                (pd.to_datetime(dff["Data"]) <= end_date_current)
+                ]
+            df_total_current = dff[
+                (pd.to_datetime(dff["Data"]) >= start_date_current) &
+                (pd.to_datetime(dff["Data"]) <= end_date_current)
+                ]
+
+            penetration_current = 0
+            if not df_total_current.empty:
+                penetration_current = df_loyal_current["#"].nunique() / df_total_current["#"].nunique() * 100
+
+            start_date_prev = start_date_current - pd.Timedelta(days=30)
+            end_date_prev = start_date_current - pd.Timedelta(days=1)
+
+            df_prev_filtered = df[
+                (df["Data"] >= start_date_prev.date()) &
+                (df["Data"] <= end_date_prev.date())
+                ].copy()
+
+            df_prev_filtered["Grupa towarowa"] = df_prev_filtered["HOIS"].map(
+                lambda x: hois_map.get(x, ("Nieznana", "Nieznana"))[0])
+            df_prev_filtered["Grupa sklepowa"] = df_prev_filtered["HOIS"].map(
+                lambda x: hois_map.get(x, ("Nieznana", "Nieznana"))[1])
+
+            df_prev_filtered = df_prev_filtered[
+                (df_prev_filtered["Stacja"].isin(selected_stations)) &
+                (df_prev_filtered["Grupa towarowa"].isin(selected_groups)) &
+                (df_prev_filtered["Login POS"] != 99999)
+                ].copy()
+
+            df_loyal_prev = df_prev_filtered[df_prev_filtered["Karta lojalnościowa"].str.upper() == "TAK"]
+            df_total_prev = df_prev_filtered
+
+            penetration_prev = 0
+            if not df_total_prev.empty:
+                penetration_prev = df_loyal_prev["#"].nunique() / df_total_prev["#"].nunique() * 100
+
+            delta_value = penetration_current - penetration_prev
+            prev_label = f"{start_date_prev.strftime('%d.%m')} - {end_date_prev.strftime('%d.%m')}"
+
+            loyalty_df = dff[dff["Karta lojalnościowa"].str.upper() == "TAK"].copy()
+            total_df = dff.copy()
+
+            loyal_daily = loyalty_df.groupby("Okres")["#"].nunique().reset_index(name="Lojalnościowe")
+            total_daily = total_df.groupby("Okres")["#"].nunique().reset_index(name="Wszystkie")
+            merged_df = pd.merge(loyal_daily, total_daily, on="Okres")
+            merged_df["Penetracja"] = (merged_df["Lojalnościowe"] / merged_df["Wszystkie"]) * 100
+
+            pl_holidays = holidays.Poland()
+            free_days = [day for day in pd.to_datetime(merged_df["Okres"]).dt.date.unique() if
+                         day.weekday() >= 5 or day in pl_holidays]
+
+            fig_pen = px.line(merged_df, x="Okres", y="Penetracja", title="Penetracja lojalnościowa (%)")
+            fig_pen.update_traces(mode="lines+markers")
+            fig_pen.update_layout(xaxis_tickformat="%d.%m")
+            for day in free_days:
+                fig_pen.add_vline(x=day, line_dash="dot", line_color="orange", opacity=0.2)
+
+            fig_loyal = px.line(loyal_daily, x="Okres", y="Lojalnościowe", title="Transakcje lojalnościowe")
+            fig_loyal.update_traces(mode="lines+markers")
+            fig_loyal.update_layout(xaxis_tickformat="%d.%m")
+            for day in free_days:
+                fig_loyal.add_vline(x=day, line_dash="dot", line_color="orange", opacity=0.2)
+
+            df_both = pd.merge(loyal_daily, total_daily, on="Okres")
+            df_both_melted = df_both.melt(id_vars=["Okres"], value_vars=["Lojalnościowe", "Wszystkie"],
+                                          var_name="Typ transakcji", value_name="Liczba")
+
+            fig_combined = px.line(df_both_melted, x="Okres", y="Liczba", color="Typ transakcji",
+                                   title="Transakcje lojalnościowe vs. wszystkie")
+            fig_combined.update_traces(mode="lines+markers")
+            fig_combined.update_layout(
+                xaxis_tickformat="%d.%m",
+                yaxis=dict(title="Wszystkie transakcje"),
+                yaxis2=dict(title="Lojalnościowe transakcje", overlaying="y", side="right", showgrid=False),
+                legend=dict(x=0.01, y=1.15, xanchor="left", yanchor="top", bgcolor='rgba(0,0,0,0)', borderwidth=0)
+            )
+            fig_combined.for_each_trace(
+                lambda trace: trace.update(yaxis="y2") if trace.name == "Lojalnościowe" else None)
+            for day in free_days:
+                fig_combined.add_vline(x=day, line_dash="dot", line_color="orange", opacity=0.2)
+
+            df_loyal_top = dff[dff["Karta lojalnościowa"].str.upper() == "TAK"].copy()
+            total_per_group = dff.groupby("Grupa towarowa")["#"].nunique().reset_index(name="Total")
+            loyal_per_group = df_loyal_top.groupby("Grupa towarowa")["#"].nunique().reset_index(name="Lojal")
+            merged_top = pd.merge(total_per_group, loyal_per_group, on="Grupa towarowa", how="left")
+            merged_top["Lojal"] = merged_top["Lojal"].fillna(0)
+            merged_top = merged_top[~merged_top["Grupa towarowa"].str.contains("ZzzGrGSAP")]
+            merged_top["Penetracja"] = (merged_top["Lojal"] / merged_top["Total"]) * 100
+            merged_top = merged_top.sort_values("Penetracja", ascending=False)
+            merged_top["Penetracja"] = merged_top["Penetracja"].round(2).astype(str) + "%"
+
+            return html.Div(children=[
+                html.H4("Lojalność"),
+                html.Div([
+                    html.Div([
+                        html.Div("Średnia penetracja (obecny zakres)", className="metric-label"),
+                        html.Div(f"{penetration_current:.2f}%", className="metric-value"),
+                        html.Div(f"Zmiana: {delta_value:.2f}%", className=f"metric-delta " +
+                                                                          (
+                                                                              "positive" if delta_value > 0 else "negative" if delta_value < 0 else "neutral"))
+                    ], className="metric-card"),
+
+                    html.Div([
+                        html.Div(f"Średnia penetracja ({prev_label})", className="metric-label"),
+                        html.Div(f"{penetration_prev:.2f}%", className="metric-value")
+                    ], className="metric-card"),
+                ], className="metric-container"),
+
+                dcc.Graph(className="custom-graph",figure=fig_pen),
+                dcc.Graph(className="custom-graph",figure=fig_loyal),
+                dcc.Graph(className="custom-graph",figure=fig_combined),
+                html.Div([
+                    html.Div([
+                        html.H6("TOP / BOTTOM 5 grup towarowych wg penetracji lojalnościowej"),
+                        dbc.Row([
+                            dbc.Col([
+                                html.Div("TOP 5", className="loyalty-table-title"),
+                                html.Div(
+                                    dash_table.DataTable(
+                                        data=merged_top.head(5).rename(columns={"Grupa towarowa": "Grupa"}).to_dict(
+                                            'records'),
+                                        columns=[
+                                            {"name": "Grupa", "id": "Grupa"},
+                                            {"name": "Penetracja (%)", "id": "Penetracja", "type": "numeric",
+                                             "format": {"specifier": ".2f"}}
+                                        ],
+                                        style_cell={
+                                            'fontFamily': 'Open Sans, sans-serif',
+                                            'fontSize': '14px',
+                                            'padding': '10px',
+                                            'border': 'none'
+                                        },
+                                        style_data_conditional=[
+                                            {'if': {'row_index': 'odd'}, 'backgroundColor': '#f9f9f9'},
+                                        ],
+                                        style_header={
+                                            'backgroundColor': '#f1f7ff',
+                                            'fontWeight': 'bold',
+                                            'borderBottom': '2px solid #e3e7ec'
+                                        },
+                                        style_table={
+                                            'overflowX': 'auto',
+                                            'borderRadius': '6px'
+                                        },
+                                        style_as_list_view=True
+                                    ),
+                                    className="loyalty-datatable"
+                                )
+                            ], width=6),
+                            dbc.Col([
+                                html.Div("BOTTOM 5", className="loyalty-table-title"),
+                                html.Div(
+                                    dash_table.DataTable(
+                                        data=merged_top.tail(5).rename(columns={"Grupa towarowa": "Grupa"}).to_dict(
+                                            'records'),
+                                        columns=[
+                                            {"name": "Grupa", "id": "Grupa"},
+                                            {"name": "Penetracja (%)", "id": "Penetracja", "type": "numeric",
+                                             "format": {"specifier": ".2f"}}
+                                        ],
+                                        style_cell={
+                                            'fontFamily': 'Open Sans, sans-serif',
+                                            'fontSize': '14px',
+                                            'padding': '10px',
+                                            'border': 'none'
+                                        },
+                                        style_data_conditional=[
+                                            {'if': {'row_index': 'odd'}, 'backgroundColor': '#f9f9f9'},
+                                        ],
+                                        style_header={
+                                            'backgroundColor': '#f1f7ff',
+                                            'fontWeight': 'bold',
+                                            'borderBottom': '2px solid #e3e7ec'
+                                        },
+                                        style_table={
+                                            'overflowX': 'auto',
+                                            'borderRadius': '6px'
+                                        },
+                                        style_as_list_view=True
+                                    ),
+                                    className="loyalty-datatable"
+                                )
+                            ], width=6)
+                        ], className="loyalty-table-container")
+                    ])
+
+            ])])
+
+
+
+
+        elif tab == 'tab5':
+
+            carwash_df = dff[dff["Grupa sklepowa"] == "MYJNIA INNE"]
+
+            if carwash_df.empty:
+                return html.Div(children=[
+
+                    html.H3("Myjnia"),
+
+                    html.P("Brak danych myjni dla wybranych filtrów.")
+
+                ])
+
+            # METRYKI MYJNI (ilość sztuk zamiast zł)
+
+            sales_total = carwash_df["Ilość"].sum()
+
+            sales_karnet = carwash_df[carwash_df["Nazwa produktu"].str.lower().str.startswith("karnet")]["Ilość"].sum()
+
+            def classify_program_all(nazwa):
+
+                nazwa = nazwa.lower()
+
+                if "standard" in nazwa:
+
+                    return "Myjnia Standard"
+
+                elif "express" in nazwa:
+
+                    return "Myjnia Express"
+
+                else:
+
+                    return "Pozostałe"
+
+            carwash_df["Program"] = carwash_df["Nazwa produktu"].apply(classify_program_all)
+
+            program_sales = carwash_df.groupby("Program")["Ilość"].sum().to_dict()
+
+            carwash_df["Typ produktu"] = carwash_df["Nazwa produktu"].str.lower().apply(
+
+                lambda x: "Karnet" if x.startswith("karnet") else "Inne"
+
+            )
+
+            all_tx = dff["#"].nunique()
+
+            carwash_tx = carwash_df["#"].nunique()
+
+            penetration = (carwash_tx / all_tx) * 100 if all_tx else 0
+
+            metric_carwash = html.Div(className="metric-container", children=[
+                generate_metric_card("Sprzedane programy", format_metric_value(sales_total, " szt.")),
+                generate_metric_card("Udział myjnii", f"{penetration:.1f}%"),
+                generate_metric_card("Karnety", format_metric_value(sales_karnet, " szt.")),
+                generate_metric_card("Standard", format_metric_value(program_sales.get('Myjnia Standard', 0), " szt.")),
+                generate_metric_card("Express", format_metric_value(program_sales.get('Myjnia Express', 0), " szt."))
+            ])
+
+            carwash_grouped = carwash_df.groupby(["Okres"] + ([category_col] if category_col else []))[
+
+                "Ilość"].sum().reset_index()
+
+            fig_carwash = px.line(carwash_grouped, x="Okres", y="Ilość", color=category_col,
+
+                                  title="Sprzedaż usług myjni", markers=True)
+
+            sales_grouped = carwash_df.groupby(["Okres"] + ([category_col] if category_col else []))[
+
+                "Netto"].sum().reset_index()
+
+            fig_sales = px.line(sales_grouped, x="Okres", y="Netto", color=category_col,
+
+                                title="Sprzedaż netto grupy Myjnia", markers=True)
+
+            pie_df = carwash_df.groupby("Typ produktu")["Ilość"].sum().reset_index()
+
+            fig_karnet = px.pie(pie_df, values="Ilość", names="Typ produktu",
+
+                                title="Udział karnetów w sprzedaży MYJNIA INNE", hole=0.4)
+
+            fig_karnet.update_traces(textposition='inside', textinfo='percent+label')
+
+            program_df_all = carwash_df.groupby("Program")["Ilość"].sum().reset_index()
+
+            fig_program_all = px.pie(
+
+                program_df_all,
+
+                values="Ilość",
+
+                names="Program",
+
+                title="Udział programów Standard i Express w sprzedaży MYJNIA INNE",
+
+                hole=0.4
+
+            )
+
+            fig_program_all.update_traces(textposition='inside', textinfo='percent+label')
+
+            try:
+
+                start_dt = pd.to_datetime(dff["Okres"].min())
+
+                end_dt = pd.to_datetime(dff["Okres"].max())
+
+                free_days = get_free_days(start_dt, end_dt)
+
+                for day in free_days:
+                    fig_carwash.add_vline(x=day, line_dash="dot", line_color="orange", opacity=0.2)
+
+                    fig_sales.add_vline(x=day, line_dash="dot", line_color="orange", opacity=0.2)
+
+            except Exception as e:
+
+                print("Błąd przy dodawaniu dni wolnych: ", e)
+
+            return html.Div(children=[
+
+                html.H4("Myjnia"),
+
+                metric_carwash,
+
+                dbc.Row(children=[
+
+                    dbc.Col(dcc.Graph(className="custom-graph", figure=fig_carwash), width=12)
+
+                ]),
+
+                dbc.Row(children=[
+
+                    dbc.Col(dcc.Graph(className="custom-graph", figure=fig_sales), width=12)
+
+                ]),
+
+                dbc.Row(children=[
+
+                    dbc.Col(dcc.Graph(className="custom-graph", figure=fig_karnet), width=6),
+
+                    dbc.Col(dcc.Graph(className="custom-graph", figure=fig_program_all), width=6)
+
+                ])
+
+            ])
+
+
+
+        elif tab == 'tab6':
+            favorites = app.server.config.get('FAVORITES', set())
+            if not favorites:
+                return html.Div(children=[
+                    html.H3("Ulubione"),
+                    html.P("Nie dodano jeszcze żadnych wykresów do ulubionych.")
+                ])
+
+            favorite_components = []
+            for fav in list(favorites):
+                fig = None  # Placeholder; replace with actual figure retrieval logic
+                if fig:
+                    favorite_components.extend([
+                        html.H4(fav),
+                        dcc.Graph(className="custom-graph",figure=fig),
+                        dbc.Button("✖ Usuń z ulubionych",
+                                   id={'type': 'remove-favorite', 'index': fav},
+                                   color="danger",
+                                   size="sm",
+                                   className="mb-3")
+                    ])
+
+            return html.Div(children=[
+                html.H3("Ulubione wykresy"),
+                html.P("Wybrane przez Ciebie wykresy:"),
+                *favorite_components
+            ])
+
+        elif tab == 'tab7':
+            dff["Kasjer"] = dff["Stacja"].astype(str) + " - " + dff["Login POS"].astype(str)
+
+            kasjer_summary = dff.groupby("Kasjer").agg({
+                "#": pd.Series.nunique,
+                "Netto": "sum",
+                "Ilość": "sum"
+            }).reset_index()
+            kasjer_summary.columns = ["Kasjer", "Liczba transakcji", "Obrót netto", "Suma sztuk"]
+            kasjer_summary["Średnia wartość transakcji"] = kasjer_summary["Obrót netto"] / kasjer_summary["Liczba transakcji"]
+            kasjer_summary = kasjer_summary.sort_values("Obrót netto", ascending=False)
+
+            top10 = kasjer_summary.head(10)
+            fig_kasjer = px.bar(top10, x="Kasjer", y="Obrót netto", title="TOP 10 kasjerów wg obrotu netto")
+            fig_trans = px.bar(top10, x="Kasjer", y="Liczba transakcji", title="TOP 10 kasjerów wg liczby transakcji")
+            fig_avg = px.bar(top10, x="Kasjer", y="Średnia wartość transakcji",
+                            title="TOP 10 kasjerów wg średniej wartości transakcji")
+
+            df_loyal = dff[dff["Karta lojalnościowa"].str.upper() == "TAK"].copy()
+            df_all = dff.copy()
+
+            df_loyal["Kasjer"] = df_loyal["Stacja"].astype(str) + " - " + df_loyal["Login POS"].astype(str)
+            df_all["Kasjer"] = df_all["Stacja"].astype(str) + " - " + df_all["Login POS"].astype(str)
+
+            loyal_tx = df_loyal.groupby("Kasjer")["#"].nunique().reset_index().rename(columns={"#": "Lojalnościowe"})
+            all_tx = df_all.groupby("Kasjer")["#"].nunique().reset_index().rename(columns={"#": "Wszystkie"})
+
+            penetracja_df = pd.merge(all_tx, loyal_tx, on="Kasjer", how="left").fillna(0)
+            penetracja_df["Penetracja"] = (penetracja_df["Lojalnościowe"] / penetracja_df["Wszystkie"]) * 100
+            penetracja_df = penetracja_df.sort_values("Penetracja", ascending=False)
+
+            fig_penetracja = px.bar(
+                penetracja_df,
+                x="Kasjer",
+                y="Penetracja",
+                title="Penetracja lojalnościowa per kasjer (%)",
+                text_auto=".1f"
+            )
+            fig_penetracja.update_layout(yaxis_title="%", xaxis_title="Kasjer")
+            # Sekcja layout
+            content = [
+                html.H4("Sprzedaż per kasjer"),
+                html.Div([
+                    html.H6("Ranking kasjerów wg obrotu netto"),
+                    dbc.Row([
+                        dbc.Col([
+                            html.Div(
+                                dash_table.DataTable(
+                                    data=kasjer_summary.head(10).to_dict('records'),
+                                    columns=[{"name": col, "id": col} for col in kasjer_summary.columns],
+                                    style_cell={
+                                        'fontFamily': 'Open Sans, sans-serif',
+                                        'fontSize': '14px',
+                                        'padding': '10px',
+                                        'border': 'none'
+                                    },
+                                    style_data_conditional=[
+                                        {'if': {'row_index': 'odd'}, 'backgroundColor': '#f9f9f9'},
+                                    ],
+                                    style_header={
+                                        'backgroundColor': '#f1f7ff',
+                                        'fontWeight': 'bold',
+                                        'borderBottom': '2px solid #e3e7ec'
+                                    },
+                                    style_table={
+                                        'overflowX': 'auto',
+                                        'borderRadius': '6px'
+                                    },
+                                    style_as_list_view=True,
+                                    page_size=10
+                                ),
+                                className="loyalty-datatable"
+                            )
+                        ], width=12)
+                    ], className="loyalty-table-container")
+                ]),
+                dcc.Graph(className="custom-graph", figure=fig_kasjer),
+                dcc.Graph(className="custom-graph", figure=fig_trans),
+                dcc.Graph(className="custom-graph", figure=fig_avg),
+                html.H4("Penetracja lojalnościowa per kasjer"),
+                dcc.Graph(className="custom-graph", figure=fig_penetracja),
+            ]
+            # Dropdown + placeholder pod dynamiczne wykresy top produktów
+            try:
+                top_products_df = pd.read_csv("top_products.csv", sep=";")
+                top_products_df["MIESIĄC"] = top_products_df["MIESIĄC"].astype(str)
+
+                dropdown_top_month = dcc.Dropdown(
+                    id="top-month-dropdown",
+                    options=[{"label": m, "value": m} for m in sorted(top_products_df["MIESIĄC"].unique())],
+                    value=sorted(top_products_df["MIESIĄC"].unique())[-1],
+                    clearable=False,
+                    className="mb-4"
+                )
+
+                content.extend([
+                    html.H6("Analiza top produktów per kasjer"),
+                    html.Div([
+                        html.Label("Wybierz miesiąc:"),
+                        dropdown_top_month
+                    ]),
+                    dcc.Graph(id="top-products-graph", className="custom-graph"),
+                    dcc.Graph(id="top-products-per-tx-graph", className="custom-graph")
+                ])
+            except Exception as e:
+                print(f"Błąd przy wczytywaniu dropdowna miesiąca: {e}")
+
+            return html.Div(content)
+        #CALLBACK DO DROPDOWN TOP PRODUKTY
+    @app.callback(
+        Output("top-products-graph", "figure"),
+        Output("top-products-per-tx-graph", "figure"),
+        Input("top-month-dropdown", "value"),
+        Input('start-date', 'date'),
+        Input('end-date', 'date'),
+
+        State('station-dropdown', 'value'),
+        State('group-dropdown', 'value'),
+        Input("theme-store", "data")
+    )
+    def update_top_products_graphs(selected_month, start_date, end_date, selected_stations, selected_groups, theme_data):
+        theme = theme_data.get("theme", "light")
+        pio.templates.default = "corporate_dark" if theme == "dark" else "corporate_blue"
+        try:
+            # Szybko: użycie cache zamiast ponownego wczytywania
+            df_all = df_cached.copy()
+            hois_map = hois_cached.copy()
+
+            df_all["Grupa towarowa"] = df_all["HOIS"].map(lambda x: hois_map.get(x, ("Nieznana", "Nieznana"))[0])
+            df_all["Data"] = pd.to_datetime(df_all["Data"])
+            df_all = df_all[df_all["Login POS"] != 99999]
+
+            # Filtrowanie na podstawie zakresu dat, stacji i grup
+            df_filtered = df_all[
+                (df_all["Data"] >= pd.to_datetime(start_date)) &
+                (df_all["Data"] <= pd.to_datetime(end_date)) &
+                (df_all["Stacja"].isin(selected_stations)) &
+                (df_all["Grupa towarowa"].isin(selected_groups))
+            ].copy()
+
+            # Przygotowanie danych
+            df_filtered["Kasjer"] = df_filtered["Stacja"].astype(str) + " - " + df_filtered["Login POS"].astype(str)
+            df_filtered["Miesiąc"] = df_filtered["Data"].dt.to_period("M").astype(str)
+            df_filtered["PLU"] = df_filtered["PLU"].astype(str).str.strip()
+
+            # Top produkty z pliku CSV
+            top_products_df = pd.read_csv("top_products.csv", sep=";")
+            top_products_df["MIESIĄC"] = top_products_df["MIESIĄC"].astype(str)
+            top_products_df["PLU"] = top_products_df["PLU"].astype(str).str.strip()
+            nazwy_plu = top_products_df.set_index("PLU")["NAZWA"].to_dict()
+
+            top_plu_list = top_products_df[top_products_df["MIESIĄC"] == selected_month]["PLU"].tolist()
+
+            # Filtrowanie danych sprzedażowych do top PLU i wybranego miesiąca
+            df_top = df_filtered[
+                (df_filtered["Miesiąc"] == selected_month) &
+                (df_filtered["PLU"].isin(top_plu_list))
+            ].copy()
+
+            if df_top.empty:
+                return go.Figure(), go.Figure()
+
+            df_top["PLU_nazwa"] = df_top["PLU"].map(nazwy_plu)
+
+            # ➕ Ograniczenie do top 20 kasjerów (by uniknąć lagów)
+            top_kasjerzy = df_top.groupby("Kasjer")["Ilość"].sum().nlargest(20).index.tolist()
+            df_top = df_top[df_top["Kasjer"].isin(top_kasjerzy)]
+
+            # Wykres 1: liczba sprzedanych sztuk per kasjer i produkt
+            sztuki_df = df_top.groupby(["Kasjer", "PLU_nazwa"])["Ilość"].sum().reset_index()
+
+            fig1 = px.bar(
+                sztuki_df,
+                x="Kasjer",
+                y="Ilość",
+                color="PLU_nazwa",
+                title=f"Sprzedaż sztukowa top produktów ({selected_month})",
+                text_auto=".2s"
+            )
+            fig1.update_layout(barmode="stack", xaxis_tickangle=-45)
+
+            # Wykres 2: średnia liczba sztuk na transakcję
+            transakcje_df = df_top.groupby("Kasjer")["#"].nunique().reset_index().rename(columns={"#": "Transakcje"})
+            sztuki_df = sztuki_df.merge(transakcje_df, on="Kasjer", how="left")
+            sztuki_df["Sztuki na transakcję"] = sztuki_df["Ilość"] / sztuki_df["Transakcje"]
+
+            fig2 = px.bar(
+                sztuki_df,
+                x="Kasjer",
+                y="Sztuki na transakcję",
+                color="PLU_nazwa",
+                title=f"Średnia liczba sprzedanych top produktów na transakcję ({selected_month})",
+                text_auto=".2f"
+            )
+            fig2.update_layout(barmode="stack", xaxis_tickangle=-45)
+
+            return fig1, fig2
+
+        except Exception as e:
+            print(f"Błąd w callbacku top produktów: {e}")
+            return go.Figure(), go.Figure()
+
+
+    # ---------------------------------------------
+    # Callback dla heatmapy
+    # ---------------------------------------------
+    @app.callback(
+        Output('heatmap-graph', 'figure'),
+        Input('metric-selector', 'value'),
+        Input('start-date', 'date'),
+        Input('end-date', 'date'),
+
+        Input('station-dropdown', 'value'),
+        Input('group-dropdown', 'value'),
+        Input("theme-store", "data"),
+        Input('product-dropdown', 'value'),
+        Input('b2b-checklist', 'value')
+
+        
+    )
+    def update_heatmap(metric, start_date, end_date, selected_stations, selected_groups,theme_data, selected_products, selected_b2b):
+        theme = theme_data.get("theme", "light")
+        pio.templates.default = "corporate_dark" if theme == "dark" else "corporate_blue"
+        start_date_obj = pd.to_datetime(start_date).date()
+        end_date_obj = pd.to_datetime(end_date).date()
+        dff = df[(df["Data"] >= start_date_obj) &
+                 (df["Data"] <= end_date_obj) &
+                 (df["Stacja"].isin(selected_stations)) &
+                 (df["B2B"].isin(selected_b2b)) &
+                 (df["Grupa towarowa"].isin(selected_groups))].copy()
+        
+        dff = dff[dff["Login POS"] != 99999].copy()
+        if selected_products:
+            dff = dff[dff["PLU_nazwa"].isin(selected_products)]
+
+
+        dff["Godzina"] = pd.to_datetime(dff["Data_full"], errors="coerce").dt.hour
+        dff["Dzień tygodnia"] = pd.to_datetime(dff["Data_full"], errors="coerce").dt.dayofweek
+
+        dni = ["Pon", "Wt", "Śr", "Czw", "Pt", "Sob", "Nd"]
+        godziny = list(range(24))
+        full_index = pd.MultiIndex.from_product([range(7), godziny], names=["Dzień tygodnia", "Godzina"])
+
+        if metric == "tx":
+            grouped = dff.groupby(["Dzień tygodnia", "Godzina"])["#"].nunique()
+        elif metric == "netto":
+            grouped = dff.groupby(["Dzień tygodnia", "Godzina"])["Netto"].sum()
+        elif metric == "ilosc":
+            grouped = dff.groupby(["Dzień tygodnia", "Godzina"])["Ilość"].sum()
+        elif metric == "paliwo":
+            grouped = dff[dff["HOIS"] == 0].groupby(["Dzień tygodnia", "Godzina"])["#"].nunique()
+        elif metric == "lojalnosc":
+            all_tx = dff.groupby(["Dzień tygodnia", "Godzina"])["#"].nunique().rename("Wszystkie")
+            loyal_tx = dff[dff["Karta lojalnościowa"].str.upper() == "TAK"].groupby(["Dzień tygodnia", "Godzina"])[
+                "#"].nunique().rename("Lojalnościowe")
+            merged = pd.merge(all_tx, loyal_tx, left_index=True, right_index=True, how="left").fillna(0)
+            grouped = (merged["Lojalnościowe"] / merged["Wszystkie"] * 100).rename("Penetracja")
+        else:
+            grouped = pd.Series(dtype=float)
+
+        grouped = grouped.reindex(full_index, fill_value=0).reset_index(name="Wartość")
+        heat_pivot = grouped.pivot(index="Dzień tygodnia", columns="Godzina", values="Wartość")
+        heat_pivot.index = [dni[i] for i in heat_pivot.index]
+
+        color_scale = "Blues" if theme != "dark" else "Blues_r"
+
+        fig = px.imshow(
+            heat_pivot,
+            labels=dict(x="Godzina", y="Dzień tygodnia", color=metric),
+            x=[str(g) for g in godziny],
+            aspect="auto",
+            color_continuous_scale=color_scale,
+            title=f"📊 Heatmapa – {metric}"
+        )
+
+        fig.update_layout(
+            xaxis_title="Godzina",
+            yaxis_title="Dzień tygodnia",
+            yaxis=dict(autorange="reversed"),
+            xaxis=dict(type="category", tickmode="linear")
+        )
+
+        return fig
+
+    # ---------------------------------------------
+    # Callback do usuwania wykresów z ulubionych
+    # ---------------------------------------------
+    @app.callback(
+        Output('tabs-content', 'children', allow_duplicate=True),
+        Input({'type': 'remove-favorite', 'index': dash.ALL}, 'n_clicks'),
+        Input('start-date', 'date'),
+        Input('end-date', 'date'),
+
+        State('station-dropdown', 'value'),
+        State('group-dropdown', 'value'),
+        State('monthly-check', 'value'),
+        prevent_initial_call=True
+    )
+    def remove_favorite(n_clicks, start_date, end_date, selected_stations, selected_groups, monthly_check):
+        ctx = dash.callback_context
+        if not ctx.triggered or not any(n_clicks):
+            return dash.no_update
+
+        button_id = ctx.triggered[0]['prop_id'].split('.')[0]
+        fav_key = eval(button_id)['index']
+
+        favorites = app.server.config.get('FAVORITES', set())
+        if fav_key in favorites:
+            favorites.remove(fav_key)
+            app.server.config['FAVORITES'] = favorites
+
+        return render_tab_content('tab6', start_date, end_date, selected_stations, selected_groups, monthly_check)
+
+    @app.callback(
+        Output("filter-panel", "className"),
+        Output("filter-column", "className"),
+        Output("content-column", "className"),
+        Output("trigger-graph-resize", "data"),
+        Input("toggle-filter-button", "n_clicks"),
+        State("filter-panel", "className"),
+        prevent_initial_call=True
+    )
+    def toggle_filter_panel(n_clicks, current_class):
+        filters_hidden = "hidden" in current_class
+
+        if filters_hidden:
+            return (
+                "",  # filtr znowu widoczny
+                "responsive-filter",
+                "responsive-content",  # normalna szerokość wykresów
+                {"value": random()}  # wyzwalacz dla clientside resize
+            )
+        else:
+            return (
+                "hidden",  # chowamy panel
+                "responsive-filter hidden",
+                "responsive-content expanded",  # wykresy na całą szerokość
+                {"value": random()}  # wyzwalacz dla clientside resize
+            )
+    #przełączanie trybu jasny/ciemny
+    @app.callback(
+    Output('theme-store', 'data'),
+    Input('theme-toggle-button', 'n_clicks'),
+    Input('theme-store', 'data'),
+    prevent_initial_call=True
+)
+    def toggle_theme(n, current_theme):
+        new_theme = 'dark' if current_theme.get('theme') == 'light' else 'light'
+        return {'theme': new_theme}
     
-}
-@media screen and (min-width: 1200px) {
-    .main-container {
-        padding: 30px;
-        background-color: #ffffff;
+    app.clientside_callback(
+    """
+    function(themeData) {
+        if (!themeData || !themeData.theme) return window.dash_clientside.no_update;
+
+        const theme = themeData.theme;
+        const body = document.body;
+
+        if (theme === 'dark') {
+            body.classList.add('dark');
+            return '☀️';
+        } else {
+            body.classList.remove('dark');
+            return '🌙';
+        }
     }
+    """,
+    Output("theme-toggle-button", "children"),  
+    Input("theme-store", "data"),
+    prevent_initial_call=True
+)
+    
+    app.clientside_callback(
+        """
+        function(trigger) {
+            setTimeout(() => {
+                const graphs = document.querySelectorAll('.js-plotly-plot');
+                graphs.forEach(g => {
+                    Plotly.Plots.resize(g);
+                });
+            }, 300);
+            return window.dash_clientside.no_update;
+        }
+        """,
+        Output("theme-toggle-button", "n_clicks"),  # dummy output
+        Input("trigger-graph-resize", "data")
+    )
     
 
-    .dash-bootstrap .row {
-        margin-left: 0 !important;
-        margin-right: 0 !important;
-    }
-
-    .dash-bootstrap .col {
-        padding-left: 15px !important;
-        padding-right: 15px !important;
-    }
-}
-@media screen and (max-width: 992px) {
-    .dashboard-layout {
-        flex-direction: column;
-    }
-
-    .responsive-filter,
-    .responsive-content {
-        width: 100% !important;
-        padding-right: 0 !important;
-    }
-
-
-    .responsive-filter.hidden {
-        display: none !important;
-    }
-
-    .responsive-content.expanded {
-        width: 100% !important;
-    }
-    /* Sticky panel filtrów */
-
-}
-@media (min-width: 992px) {
-    /* Sticky filtr */
-    #filter-column {
-        position: sticky;
-        top: 80px; /* Możesz dostosować w zależności od wysokości headera */
-        height: calc(100vh - 100px); /* Cała wysokość okna minus margines */
-        overflow-y: auto;
-        overflow-x: visible;
-        padding-right: 10px; /* żeby scrollbar nie nachodził na zawartość */
-        z-index: 20;
-    }
-
-    /* Dropdowny (Select) */
-    .Select-menu-outer,
-    .Select-menu {
-        max-height: 250px;
-        overflow-y: auto;
-        z-index: 9999 !important;
-    }
-
-    /* Kalendarz */
-    .DateInput,
-    .DateInput_input {
-        z-index: 999 !important;
-    }
-
-    /* Dropdown Dash Bootstrap Components */
-    .dropdown-menu {
-        z-index: 9999 !important;
-    }
-
-    /* Scrollbar wygląd (opcjonalne) */
-    #filter-column::-webkit-scrollbar {
-        width: 8px;
-    }
-    #filter-column::-webkit-scrollbar-thumb {
-        background-color: rgba(0,0,0,0.2);
-        border-radius: 4px;
-    }
-}
+    
 
 
 
 
+    return app
