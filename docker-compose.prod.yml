@@ -3,11 +3,11 @@ services:
     build: './new'
     hostname: kompas
     container_name: kompas
-    cpuset: "0,1"
+    cpuset: "0,1,2,3"
     deploy:
       resources:
         limits:
-          cpus: "2.0"
+          cpus: "4.0"
     networks:
       - kompas-net
     ports:
@@ -15,6 +15,11 @@ services:
     volumes:
       - './new:/app'
   kompas-db:
+    cpuset: "6,7"
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
     build: './database'
     hostname: kompas-db
     container_name: kompas-db
@@ -23,6 +28,11 @@ services:
     volumes:
       - kompas-db:/var/lib/mysql
   kompas-cache:
+    cpuset: "4,5"
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
     build: './cache'
     hostname: kompas-cache
     container_name: kompas-cache
