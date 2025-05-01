@@ -1,3 +1,3 @@
 certs/
-backups/
+database/backups/
 app/.env.prod

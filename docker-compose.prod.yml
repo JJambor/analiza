@@ -42,6 +42,7 @@ services:
       - kompas-net
     volumes:
       - kompas-db:/var/lib/mysql
+      - './database/backups/:/backups/'
   kompas-cache:
     cpuset: "4,5"
     deploy:
