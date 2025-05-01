@@ -1,0 +1,24 @@
+{% extends 'secure/base.html' %}
+
+{% block title %}Lista użyszkodników{% endblock %}
+
+{% block content %}
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    {% for category, message in messages %}
+    {# category to np. 'success', 'danger', 'warning' #}
+    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+        {{ message }}
+    </div>
+    {% endfor %}
+    {% endif %}
+    {% endwith %}
+<h2 class="admin-header">Dodaj użytkownika</h2>
+
+<div class="container">
+    <div class="user-link-container">
+        <label for="link">Link dla użytkownika:</label>
+        <input value="{{link}}" name="link" id="link" disabled="disabled">
+    </div>
+</div>
+{% endblock %}

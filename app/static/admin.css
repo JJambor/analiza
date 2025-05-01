@@ -1,0 +1,139 @@
+.table, .table > th, table > td  {
+    width: 100%;
+    background-color: #1e3c72;
+    border: #fff solid 2px;
+    border-radius: 10px;
+    border-collapse: collapse;
+    max-width: 1400px;
+    margin: auto;
+
+}
+.admin-list, .user-link-container {
+    max-width: 1400px;
+    margin: auto;
+}
+.user-link-container > label{
+    font-weight: 700;
+    font-size: 1.2em;
+    display: block;
+    padding-bottom: 10px;
+}
+.user-link-container > input{
+    font-weight: 700;
+    font-size: 1.2em;
+    padding: 10px;
+    width: 100%;
+}
+.button-container > button {
+    width: 200px;
+    padding: 14px;
+    font-size: 16px;
+    background-color: #333;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+.button-container {
+    display: flex;
+    justify-content: right;
+}
+.table > thead {
+    padding: 5px;
+    background-color: #0f2027;
+}
+.table > thead > tr  > th {
+    padding: 5px;
+}
+
+.table > tbody > tr  > td {
+
+    padding: 5px 10px;
+    border: #fff 1px solid;
+}
+.table > tbody > tr > .actions {
+    text-align: center;
+}
+.table > tbody > tr  > td > a{
+
+    color: #fff;
+    font-weight: 700;
+}
+
+.table > tbody > tr  > td > a:hover{
+    color: #0f2027;
+    font-weight: 700;
+    transition: color .4s;
+}
+.admin-header {
+    margin-top: 100px;
+    margin-bottom: 75px;
+    text-align: center;
+    font-weight: 900;
+}
+
+.sheets-actions {
+    padding: 5px 0;
+    justify-content: right;
+    max-width: 1400px;
+    margin: auto;
+    display: flex;
+    gap: 20px;
+
+
+}
+.sheets-actions > .form-control {
+    padding: 7px 0;
+}
+.sheets-actions > .form-control > label  {
+    font-size: 1.2em;
+    font-weight: 700;
+    cursor: pointer;
+
+}
+.sheets-actions > .form-control > input  {
+    font-size: 1.2em;
+    font-weight: 700;
+    cursor: pointer;
+
+}
+.admin-list-menu, .admin-list-menu > ul {
+    width: 100%;
+}
+.admin-list-menu > ul {
+    padding: 10px 30px;
+}
+.admin-list-menu > ul > li {
+    padding: 7px 0;
+    text-align: left;
+}
+
+.admin-list-menu > ul > li > a{
+    color: #1e3c72;
+    font-size: 1.1em;
+    font-weight: 700;
+}
+
+.admin-list-menu > ul > li > ul{
+    padding-left: 20px;
+}
+.admin-list-menu > ul > li > ul > li{
+    padding: 4px 0;
+
+}
+.admin-list-menu > ul > li > ul > li > a{
+    color: #1e3c72;
+
+}
+
+.admin-list-menu > ul > li > ul > li > a:hover,.admin-list-menu > ul > li > a:hover{
+    color: #0f2027;
+    transition: color .4s;
+}
+.alert {
+    width: 100%;
+    text-align: center;
+    background-color: red;
+    font-weight: 700;
+}

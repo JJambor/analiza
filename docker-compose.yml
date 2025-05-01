@@ -1,19 +1,18 @@
 services:
   kompas:
-    build: './new'
+    build: './app'
     hostname: kompas
     container_name: kompas
-    cpuset: "0,1"
     deploy:
       resources:
         limits:
-          cpus: "2.0"
+          cpus: "16.0"
     networks:
       - kompas-net
     ports:
       - '7100:8050'
     volumes:
-      - './new:/app'
+      - './app:/app'
   kompas-db:
     build: './database'
     hostname: kompas-db
@@ -32,10 +31,20 @@ services:
       - kompas-net
     volumes:
       - kompas-cache:/data
+  kompas-data-cache:
+    build: './cache'
+    hostname: kompas-data-cache
+    container_name: kompas-data-cache
+    networks:
+      - kompas-net
+    volumes:
+      - kompas-data-cache:/data
 networks:
   kompas-net:
     driver: bridge
 
 volumes:
   kompas-cache:
+    driver: local
+  kompas-data-cache:
     driver: local

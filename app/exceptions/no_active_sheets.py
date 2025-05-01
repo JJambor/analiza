@@ -1,0 +1,2 @@
+class NoActiveSheets(Exception):
+    pass
