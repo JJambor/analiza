@@ -22,7 +22,7 @@ services:
     ports:
       - '3306:3306'
     volumes:
-      - './database/data:/var/lib/mysql'
+      - kompas-db:/var/lib/mysql
   kompas-cache:
     build: './cache'
     hostname: kompas-cache
@@ -47,4 +47,6 @@ volumes:
   kompas-cache:
     driver: local
   kompas-data-cache:
+    driver: local
+  kompas-db:
     driver: local

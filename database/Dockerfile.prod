@@ -1,0 +1,4 @@
+FROM mariadb:latest
+COPY ./migrations/ /usr/migrations/
+ENV MYSQL_ROOT_PASSWORD=huiofsgE7887wfeJHGg45
+COPY init.prod.sql /docker-entrypoint-initdb.d

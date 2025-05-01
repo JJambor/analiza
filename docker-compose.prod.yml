@@ -1,9 +1,13 @@
 services:
   kompas:
-    build: './new'
+    build: './app'
     hostname: kompas
     container_name: kompas
     cpuset: "0,1,2,3"
+    depends_on:
+      - kompas-db
+      - kompas-cache
+      - kompas-data-cache
     deploy:
       resources:
         limits:
@@ -13,14 +17,25 @@ services:
     ports:
       - '7100:8050'
     volumes:
-      - './new:/app'
+      - './app:/app'
+      - './app/.env.prod:/app/.env'
+  kompas-data-cache:
+    build: './cache'
+    hostname: kompas-data-cache
+    container_name: kompas-data-cache
+    networks:
+      - kompas-net
+    volumes:
+      - kompas-data-cache:/data
   kompas-db:
     cpuset: "6,7"
     deploy:
       resources:
         limits:
           cpus: "2.0"
-    build: './database'
+    build:
+      context: './database'
+      dockerfile: 'Dockerfile.prod'
     hostname: kompas-db
     container_name: kompas-db
     networks:
@@ -40,6 +55,18 @@ services:
       - kompas-net
     volumes:
       - kompas-cache:/data
+  kompas-portainer:
+    image: portainer/portainer-ce:latest
+    container_name: kompas-portainer
+    hostname: kompas-portainer
+    restart: always
+    ports:
+      - "9000:9000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - kompas-portainer:/data
+    security_opt:
+      - no-new-privileges:true
 networks:
   kompas-net:
     driver: bridge
@@ -48,4 +75,8 @@ volumes:
   kompas-cache:
     driver: local
   kompas-db:
+    driver: local
+  kompas-data-cache:
+    driver: local
+  kompas-portainer:
     driver: local
